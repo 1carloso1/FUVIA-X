@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CAPA BASE: Estilos que afectan a etiquetas HTML puras */
+@layer base {
+  :root {
+    font-family: 'Inter', system-ui, sans-serif;
+    color-scheme: light; /* Fuerza modo claro por ahora */
+  }
+
+  body {
+    @apply bg-slate-900 text-slate-800 antialiased;
+    /* bg-slate-900 es tu #0f172a */
+  }
+
+  /* Quitamos los spinners nativos de los inputs numéricos para que se vea limpio */
+  input[type=number]::-webkit-inner-spin-button, 
+  input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+  }
+}
+
+/* CAPA DE COMPONENTES: Clases reutilizables (opcional) */
+@layer components {
+  /* Ejemplo: Si quisieras una clase .btn-primary en lugar de escribir todo en el JSX */
+  .btn-primary {
+    @apply bg-brand text-white font-bold py-3 px-6 rounded-lg shadow-lg transition hover:bg-brand-hover disabled:opacity-50;
+  }
+}
