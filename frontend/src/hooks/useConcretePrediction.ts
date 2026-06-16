@@ -218,7 +218,7 @@ export function useConcretePrediction() {
     // Nota: Recharts necesita códigos HEX directos en el objeto 'fill', 
     // no lee clases de Tailwind automáticamente.
     const datosBrutos = [
-      { name: 'Cemento', value: Number(form.cement), fill: '#1e293b' }, // Slate-800
+      { name: 'Cemento', value: Number(form.cement), fill: '#94a3b8' },  // Slate-400
       { name: 'Escoria', value: Number(form.slag), fill: '#64748b' },   // Slate-500
       { name: 'Ceniza', value: Number(form.flyash), fill: '#94a3b8' },  // Slate-400
       { name: 'Agua', value: Number(form.water), fill: '#3b82f6' },     // Blue-500

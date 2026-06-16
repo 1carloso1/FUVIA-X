@@ -1,8 +1,8 @@
 import { useConcretePrediction } from '../../hooks/useConcretePrediction';
-import NumberInput from '../ui/NumberInput';
-import PredictionResult from '../results/PredictionResult';
-import MixCompositionCard from '../results/MixPieChart';
-import AbramsCurveCard from '../results/AbramsLineChart';
+import NumberInput from '../ui/NumberInputDark';
+import PredictionResult from '../results/PredictionResultDark';
+import MixCompositionCard from '../results/MixPieChartDark';
+import AbramsCurveCard from '../results/AbramsLineChartDark';
 import ValidationModal from '../ui/ValidationModal';
 import html2canvas from 'html2canvas';
 

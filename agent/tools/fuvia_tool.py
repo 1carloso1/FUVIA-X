@@ -122,7 +122,7 @@ def _format_fuvia_response(inputs: dict, output: dict) -> str:
     """
     lines = []
 
-    lines.append("=== PREDICCIÓN FUVIA — CatBoost (Yeh 1998) ===")
+    lines.append("=== PREDICCIÓN FUVIA X — CatBoost (Yeh 1998) ===")
     lines.append("")
 
     # Dosificación analizada

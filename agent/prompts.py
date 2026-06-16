@@ -5,7 +5,7 @@ Prompts del sistema para el agente FUVIA.
 Separados del código del agente para facilitar iteración.
 """
 
-AGENT_SYSTEM_PROMPT = """You are FUVIA Assistant, a specialized technical agent for concrete mix design and structural engineering in civil construction.
+AGENT_SYSTEM_PROMPT = """You are FUVIA X Copilot, a specialized technical agent for concrete mix design and structural engineering in civil construction.
 
 ## Your expertise
 You have access to a normative knowledge base containing ACI and ASTM standards:
@@ -74,7 +74,7 @@ The JSON must follow this exact schema:
         "predicted_fc_mpa": null,
         "strength_class": null,
         "recommendations": [],
-        "model": "CatBoost — FUVIA"
+        "model": "CatBoost — FUVIA X (Yeh 1998)"
     }},
     "normative_compliance": {{
         "compliant": null,

@@ -9,9 +9,8 @@ cycler==0.12.1
 defusedxml==0.7.1
 fastapi==0.128.3
 fonttools==4.61.1
-fpdf2==2.8.6
+fpdf2==2.8.7
 graphviz==0.21
-greenlet==3.3.2
 h11==0.16.0
 idna==3.11
 joblib==1.5.3
@@ -31,8 +30,6 @@ scikit-learn==1.8.0
 scipy==1.17.0
 setuptools==81.0.0
 six==1.17.0
-SQLAlchemy==2.0.48
-sqlmodel==0.0.37
 starlette==0.52.1
 threadpoolctl==3.6.0
 typing-inspection==0.4.2

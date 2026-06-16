@@ -289,3 +289,7 @@ async def generar_reporte_endpoint(
     except Exception as e:
         print(f"Error generando PDF o guardando DB: {e}")
         raise HTTPException(status_code=500, detail="Error al generar el documento PDF")
+    
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}
