@@ -70,6 +70,15 @@ agent_instance = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global agent_instance
+
+    # Correr ingest si chroma_db no existe (primera vez en Render)
+    chroma_path = os.path.join(os.path.dirname(__file__), 'rag', 'chroma_db')
+    if not os.path.exists(chroma_path):
+        logger.info("chroma_db no encontrado — indexando documentos...")
+        import subprocess
+        subprocess.run(['python', 'rag/ingest.py'], check=True)
+        logger.info("Indexado completado.")
+
     logger.info("Inicializando RAG y agente LangGraph...")
     initialize_rag()
     agent_instance = build_agent()
