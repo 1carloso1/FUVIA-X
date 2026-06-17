@@ -1,8 +1,7 @@
 import { generarCurvaAbrams } from '../../utils/curvaAbrams';
 import AbramsTooltip from '../tooltips/AbramsTooltip';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
-  ReferenceDot, Tooltip, ResponsiveContainer, Label
+import { LineChart, Line, XAxis, YAxis, CartesianGrid,
+  ReferenceDot, ReferenceLine, Tooltip, ResponsiveContainer, Label
 } from 'recharts';
 
 interface AbramsCurveCardDarkProps {
@@ -15,7 +14,7 @@ export default function AbramsCurveCardDark({ ratio, strength }: AbramsCurveCard
 
   const colors = {
     brand:       '#378ADD',   // Azul FUVIA X
-    grid:        '#1e293b',   // slate-800
+    grid:        '#334155',  // slate-700 en lugar de slate-800
     text:        '#64748b',   // slate-500
     contrast:    '#ef4444',   // red-500
     tooltipLine: '#475569',   // slate-600
@@ -37,7 +36,7 @@ export default function AbramsCurveCardDark({ ratio, strength }: AbramsCurveCard
         <div className="w-full h-56">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 16, right: 24, left: 16, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} vertical={false}/>
 
               <XAxis
                 dataKey="ratio"
@@ -73,6 +72,7 @@ export default function AbramsCurveCardDark({ ratio, strength }: AbramsCurveCard
               <Tooltip
                 content={<AbramsTooltip />}
                 cursor={{ stroke: colors.tooltipLine, strokeWidth: 1.5, strokeDasharray: '4 4' }}
+                isAnimationActive={false}
               />
 
               <Line
@@ -92,6 +92,21 @@ export default function AbramsCurveCardDark({ ratio, strength }: AbramsCurveCard
                 fill={colors.contrast}
                 stroke="#0f172a"
                 strokeWidth={2}
+              />
+
+              <ReferenceLine
+                y={strength}
+                stroke={colors.contrast}
+                strokeDasharray="4 3"
+                strokeWidth={1}
+                strokeOpacity={0.6}
+              />
+              <ReferenceLine
+                x={ratio}
+                stroke={colors.contrast}
+                strokeDasharray="4 3"
+                strokeWidth={1}
+                strokeOpacity={0.6}
               />
             </LineChart>
           </ResponsiveContainer>

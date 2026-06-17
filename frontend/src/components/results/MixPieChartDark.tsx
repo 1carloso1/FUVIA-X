@@ -68,6 +68,7 @@ export default function MixCompositionCardDark({ data, age, isPdf = false }: Mix
                     paddingAngle={2} minAngle={3}
                     dataKey="value"
                     cornerRadius={4}
+                    isAnimationActive={false}
                   >
                     {data.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} stroke="none" />
@@ -75,7 +76,7 @@ export default function MixCompositionCardDark({ data, age, isPdf = false }: Mix
                   </Pie>
 
                   {/* Días en el centro */}
-                  <text x="50%" y="44%" textAnchor="middle" dominantBaseline="middle"
+                  <text x="50%" y="46%" textAnchor="middle" dominantBaseline="middle"
                     style={{ fontSize: '20px', fontWeight: 700, fill: '#e2e8f0', pointerEvents: 'none' }}>
                     {age}
                   </text>

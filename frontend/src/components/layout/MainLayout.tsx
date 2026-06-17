@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import FormularioConcreto from '../forms/FormularioConcreto';
+import { useEffect, useState } from 'react';
 import PredictionResultDark from '../results/PredictionResultDark';
 import MixCompositionCardDark from '../results/MixPieChartDark';
 import AbramsCurveCardDark from '../results/AbramsLineChartDark';
+import MixCompositionCard from '../results/MixPieChart';
+import AbramsCurveCard from '../results/AbramsLineChart';
 import CopilotChat from '../chat/CopilotChat';
 import { useConcretePrediction } from '../../hooks/useConcretePrediction';
 import { useAgentChat } from '../../hooks/useAgentChat';
@@ -39,11 +40,18 @@ export default function MainLayout() {
     confirmAnalysis, declineAnalysis, handleKeyDown,
   } = useAgentChat(resultado, form);
 
-  // Cambiar automáticamente a tab de resultados cuando llega la predicción
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    await handleSubmit(e);
-    if (!error) setActiveTab('resultados');
-  };
+  
+
+  // Agregar después de los hooks, antes de handleFormSubmit
+  useEffect(() => {
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  if (resultado) setActiveTab('resultados');
+}, [resultado]);
+
+// handleFormSubmit vuelve a su versión simple
+const handleFormSubmit = async (e: React.FormEvent) => {
+  await handleSubmit(e);
+};
 
   const handleFormReset = () => {
     handleReset();
@@ -249,8 +257,8 @@ export default function MainLayout() {
       {/* Contenedor oculto para captura PDF */}
       {resultado && (
         <div ref={printRef} className="absolute -left-[9999px] w-[800px] bg-white">
-          <MixCompositionCardDark data={pieData} age={Number(form.age)} isPdf={true} />
-          <AbramsCurveCardDark ratio={resultado.relacion_agua_cemento} strength={resultado.resistencia_estimada} />
+          <MixCompositionCard data={pieData} age={Number(form.age)} isPdf={true} />
+          <AbramsCurveCard ratio={resultado.relacion_agua_cemento} strength={resultado.resistencia_estimada} />
         </div>
       )}
     </div>

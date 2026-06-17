@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DataItem {
   name: string;
@@ -116,19 +116,19 @@ export default function MixCompositionCard({ data, age, isPdf = false }: MixComp
                 />
                 
                 
-                {/* Leyenda estilizada */}
-                <Legend 
-                  verticalAlign="bottom" 
-                  height={36} 
-                  iconType="circle" 
-                  iconSize={8}
-                  formatter={(value) => (
-                    // Usamos span para aplicar clases de Tailwind al texto de la leyenda
-                    <span className="text-slate-500 text-xs font-semibold ml-1">{value}</span>
-                  )}
-                />
+                
               </PieChart>
             </ResponsiveContainer>
+
+            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
+  {data.map((item) => (
+    <div key={item.name} className="flex items-center gap-1">
+      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.fill }} />
+      <span className="text-[10px] text-slate-500 font-medium">{item.name}</span>
+    </div>
+  ))}
+</div>
+
           </div>
 
           {/* --- COLUMNA 2: TABLA DE DETALLES --- */}

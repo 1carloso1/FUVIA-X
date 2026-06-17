@@ -73,7 +73,7 @@ def build_llm() -> ChatAnthropic:
     return ChatAnthropic(
         model="claude-sonnet-4-5",
         api_key=api_key,
-        max_tokens=2000
+        max_tokens=800
     )
 
 

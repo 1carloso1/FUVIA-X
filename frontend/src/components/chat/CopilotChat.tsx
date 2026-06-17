@@ -54,7 +54,7 @@ function ComplianceCheck({ checks }: { checks: AgentReport['normative_compliance
           <span className="mt-0.5 flex-shrink-0">
             {check.status === 'CUMPLE' ? '✓' : '⚠'}
           </span>
-          <span>
+          <span className="ml-1">
             <strong>{check.parameter}:</strong>{' '}
             {check.status} {check.deviation ? `(${check.deviation})` : ''}
             {check.recommendation && (

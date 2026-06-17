@@ -15,39 +15,23 @@ const AbramsGraph = ({ active, payload }: AbramsGraphProps) => {
 
     // CASO 1: TU MEZCLA (El punto rojo)
     if (data.esReal) {
-      return (
-        <div className="bg-white border-l-4 border-red-500 p-4 shadow-xl rounded-lg">
-          <p className="font-bold text-red-600 mb-2 text-xs uppercase tracking-wider">
-            Mezcla Actual
-          </p>
-          <div className="space-y-1">
-            <p className="text-sm text-slate-600">
-              <span className="font-semibold text-slate-800">A/C:</span> {data.ratio}
-            </p>
-            <p className="text-sm text-slate-600">
-              <span className="font-semibold text-slate-800">Resistencia:</span> {data.strength} MPa
-            </p>
-          </div>
-        </div>
-      );
-    }
+  return (
+    <div className="bg-slate-800 border-l-4 border-red-500 p-3 shadow-xl rounded-lg">
+      <p className="font-bold text-red-400 mb-1 text-[10px] uppercase tracking-wider">Mezcla Actual</p>
+      <p className="text-[11px] text-slate-400"><span className="text-slate-200 font-semibold">A/C:</span> {data.ratio}</p>
+      <p className="text-[11px] text-slate-400"><span className="text-slate-200 font-semibold">f'c:</span> {data.strength} MPa</p>
+    </div>
+  );
+}
 
     // CASO 2: LA CURVA (Simulación)
     return (
-      <div className="bg-white border-l-4 border-brand p-4 shadow-xl rounded-lg">
-        <p className="font-bold text-brand-light mb-2 text-xs uppercase tracking-wider">
-          Simulación Teórica
-        </p>
-        <div className="space-y-1">
-          <p className="text-sm text-slate-600">
-            <span className="font-semibold text-slate-800">A/C:</span> {data.ratio}
-          </p>
-          <p className="text-sm text-slate-600">
-            <span className="font-semibold text-slate-800">Resistencia:</span> {data.strength} MPa
-          </p>
-        </div>
-      </div>
-    );
+  <div className="bg-slate-800 border-l-4 border-blue-500 p-3 shadow-xl rounded-lg">
+    <p className="font-bold text-blue-400 mb-1 text-[10px] uppercase tracking-wider">Simulación Teórica</p>
+    <p className="text-[11px] text-slate-400"><span className="text-slate-200 font-semibold">A/C:</span> {data.ratio}</p>
+    <p className="text-[11px] text-slate-400"><span className="text-slate-200 font-semibold">f'c:</span> {data.strength} MPa</p>
+  </div>
+);
   }
   return null;
 };
