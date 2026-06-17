@@ -12,7 +12,7 @@ interface CopilotChatProps {
   setInput:        (val: string) => void;
   isLoading:       boolean;
   lastReport:      AgentReport | null;
-  bottomRef:       React.RefObject<HTMLDivElement>;
+  bottomRef: React.RefObject<HTMLDivElement | null>;
   sendUserMessage:  () => void;
   stopGeneration:   () => void;
   confirmAnalysis:  () => void;
