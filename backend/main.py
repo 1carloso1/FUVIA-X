@@ -52,8 +52,8 @@ app = FastAPI(title="Sistema de Predicción de Concreto - DB: Yeh", lifespan=lif
 origins = [
     "http://localhost:5173",             
     "http://localhost:3000",             
-    "https://fuvia.vercel.app",    
-    "https://fuvia.vercel.app/"    
+    "https://fuvia-x.vercel.app",    
+    "https://fuvia-x.vercel.app/"
 ]
 
 # CORS
