@@ -71,13 +71,15 @@ export interface ChatResponse {
 
 export const sendMessage = async (
   message: string,
-  history: ChatMessage[]
+  history: ChatMessage[],
+  signal?: AbortSignal
 ): Promise<ChatResponse> => {
 
   const response = await fetch(`${baseUrl}/api/chat`, {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ message, history })
+    body:    JSON.stringify({ message, history }),
+    signal,
   });
 
   if (!response.ok) {

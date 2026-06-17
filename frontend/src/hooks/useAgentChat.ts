@@ -29,7 +29,7 @@ export function useAgentChat(
   const [isLoading,  setIsLoading]  = useState(false);
   const [lastReport, setLastReport] = useState<AgentReport | null>(null);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef  = useRef<AbortController | null>(null);
 
   // ----------------------------------------------------------------

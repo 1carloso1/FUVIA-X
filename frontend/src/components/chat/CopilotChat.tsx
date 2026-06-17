@@ -1,4 +1,3 @@
-import { useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { ChatEntry } from '../../hooks/useAgentChat';
 import type { AgentReport } from '../../services/agentService';
