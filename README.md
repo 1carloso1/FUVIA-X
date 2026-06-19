@@ -1,4 +1,261 @@
-# FUVIA X — Estructura del Proyecto
+<div align="center">
+
+# FUVIA X | Plataforma de Inteligencia para Concreto
+
+<img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+<img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+<img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+<img src="https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Vercel" />
+
+<br />
+
+<img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+<img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+<img src="https://img.shields.io/badge/LangGraph-000000?style=for-the-badge&logo=langchain&logoColor=white" alt="LangGraph" />
+<img src="https://img.shields.io/badge/ChromaDB-FF6B35?style=for-the-badge&logoColor=white" alt="ChromaDB" />
+<img src="https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white" alt="Render" />
+<img src="https://img.shields.io/badge/CatBoost-FFD500?style=for-the-badge&logoColor=black" alt="CatBoost" />
+
+<br /><br />
+
+**FUVIA X** es una plataforma full-stack de ingeniería de concreto asistida por IA. Combina un modelo **CatBoost** para predicción de resistencia a compresión con un **agente LangGraph** que actúa como Copiloto normativo, consultando un stack de normas ACI/ASTM indexadas mediante RAG (Retrieval-Augmented Generation) para responder preguntas técnicas en lenguaje natural.
+
+</div>
+
+---
+
+## 🚀 Prueba Rápida (Demo en Vivo)
+
+1. Abre la aplicación: [👉 **FUVIA X Web App**](https://fuvia-x.vercel.app)
+2. Espera a que ambos servidores despierten (pantalla de carga automática)
+3. Ingresa una dosificación en el formulario y presiona **"Ejecutar Inferencia"**
+4. El Copiloto te preguntará si deseas análisis normativo — responde **"Sí, analizar"**
+
+⚙️ *El agente puede tardar 30-60 segundos en responder la primera vez. Los servidores en Render (plan gratuito) entran en modo suspensión por inactividad.*
+
+---
+
+## ✨ Características Principales
+
+* **Predicción ML:** Estimación de f'c (MPa) con CatBoost entrenado en el dataset Yeh 1998 (1,030 muestras, 8 parámetros de mezcla)
+* **Firewall Paramétrico:** 6 validaciones normativas antes de la inferencia (dominio Yeh, ACI 209R, ACI 318, ACI 211.1, ACI 212.3R, ASTM C494)
+* **Copiloto IA (RAG):** Agente LangGraph con acceso a ACI 211.1-22, ACI 211.4R-08, ACI 318-19, ASTM C150, C33 y C494 indexados en ChromaDB
+* **Análisis Visual:** Curva de Abrams, gráfico de composición volumétrica y métricas de mezcla
+* **Reporte PDF:** Exportación técnica con captura de gráficas (html2canvas + FPDF)
+* **Warm-up Automático:** Pantalla de carga que despierta ambos servidores Render antes de permitir interacción
+
+---
+
+## 🛠️ Arquitectura
+
+### Frontend — `frontend/`
+React 19 · TypeScript · Vite · Tailwind CSS · Recharts · html2canvas
+
+### Backend FUVIA — `backend/`
+FastAPI · CatBoost · Pandas · FPDF · Uvicorn
+
+### Agente RAG — `agent/`
+FastAPI · LangGraph · LangChain Anthropic · LlamaIndex · ChromaDB · BAAI/bge-small-en-v1.5 · BM25
+
+---
+
+## 🛠️ Guía de Instalación y Ejecución Local
+
+Necesitarás **tres terminales** abiertas en PowerShell. Sigue el orden exacto.
+
+---
+
+### 🐍 1. Backend FUVIA (Puerto 8000)
+
+```powershell
+cd fuvia-x\backend
+
+# Primera vez — crear entorno virtual
+python -m venv venv
+
+# Activar entorno
+.\venv\Scripts\activate
+
+# Primera vez — instalar dependencias
+pip install -r requirements.txt
+
+# Levantar servidor
+uvicorn main:app --reload --port 8000
+```
+
+✅ Listo cuando veas: `Uvicorn running on http://127.0.0.1:8000`
+
+---
+
+### 🤖 2. Agente RAG (Puerto 8001)
+
+#### Primera vez — construir la base de datos vectorial
+
+El agente requiere indexar los documentos normativos en ChromaDB antes de correr por primera vez.
+
+```powershell
+cd fuvia-x\agent
+
+# Crear entorno virtual del agente
+python -m venv venv
+
+# Activar entorno
+.\venv\Scripts\activate
+
+# Instalar dependencias
+pip install -r requirements.txt
+
+# Indexar documentos normativos (solo la primera vez o si cambias data_clean/)
+# Tarda aproximadamente 5-10 minutos
+python rag\ingest.py
+```
+
+✅ Listo cuando veas: `Indexación completada.`
+
+> ⚠️ **Nota:** Si `rag\chroma_db\` ya existe, no es necesario correr `ingest.py` de nuevo. El índice persiste entre sesiones.
+
+#### Levantar el agente
+
+```powershell
+# Desde fuvia-x\agent\ con el venv activado
+uvicorn api:app --reload --port 8001
+```
+
+✅ Listo cuando veas:
+```
+INFO - Inicializando RAG y agente LangGraph...
+INFO - Agente listo.
+INFO - Application startup complete.
+```
+
+---
+
+### ⚛️ 3. Frontend React (Puerto 5173)
+
+```powershell
+cd fuvia-x\frontend
+
+# Primera vez — instalar dependencias
+npm install
+
+# Ejecutar en modo desarrollo
+npm run dev
+```
+
+✅ Abre el navegador en: `http://localhost:5173`
+
+---
+
+### Variables de Entorno
+
+Crea `fuvia-x\.env`:
+
+```dotenv
+ANTHROPIC_API_KEY=sk-ant-...
+LLAMA_CLOUD_API_KEY=llx-...
+VITE_AGENT_URL=http://localhost:8001
+```
+
+---
+
+### Orden de arranque (resumen)
+
+```
+Terminal 1 → backend\    → uvicorn main:app --reload --port 8000
+Terminal 2 → agent\      → uvicorn api:app --reload --port 8001
+Terminal 3 → frontend\   → npm run dev
+```
+
+Espera a que las terminales 1 y 2 muestren "Application startup complete" antes de abrir el navegador.
+
+---
+
+## 🔄 Pipeline RAG — Construcción del Índice Normativo
+
+Si necesitas re-indexar (por cambios en `data_clean/` o al migrar a otro equipo):
+
+```powershell
+cd fuvia-x\agent
+.\venv\Scripts\activate
+
+# Opcional: preprocesar PDFs nuevamente
+python rag\preprocess_master.py
+
+# Auditar calidad de tablas detectadas
+python rag\audit_tables.py
+# Revisa: rag\audit_report\audit_index.txt
+
+# Re-indexar en ChromaDB
+Remove-Item -Recurse -Force rag\chroma_db
+python rag\ingest.py
+
+# Verificar que el RAG responde correctamente
+python rag\query.py
+```
+
+### Stack normativo indexado
+
+| Documento | Versión | Contenido |
+|---|---|---|
+| ACI 211.1 | -22 | Dosificación concreto normal |
+| ACI 211.4R | -08 | Dosificación alta resistencia |
+| ACI 318-19 | -19 | Requisitos estructurales y durabilidad (caps. 2,9,10,18,19,26) |
+| ASTM C150 | /C150M-22 | Cemento Portland |
+| ASTM C33 | /C33M-13 | Agregados |
+| ASTM C494 | /C494M-19 | Aditivos químicos |
+
+---
+
+## ☁️ Despliegue en Producción
+
+### Frontend → Vercel
+
+- **Root Directory:** `frontend`
+- **Framework:** Vite (detección automática)
+- **Environment Variables en Vercel:**
+  ```
+  VITE_API_URL=https://firmitas-ai.onrender.com
+  VITE_AGENT_URL=https://tu-agente.onrender.com
+  ```
+
+### Backend FUVIA → Render (servicio existente)
+
+- URL: `https://firmitas-ai.onrender.com`
+- Root Directory: `backend`
+- Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+
+### Agente RAG → Render (servicio nuevo)
+
+- Root Directory: `agent`
+- Start Command: `uvicorn api:app --host 0.0.0.0 --port $PORT`
+- Environment Variables en Render:
+  ```
+  ANTHROPIC_API_KEY=sk-ant-...
+  LLAMA_CLOUD_API_KEY=llx-...
+  ```
+
+> ⚠️ En Render, `chroma_db/` no persiste entre deploys. El `lifespan` de `api.py` detecta si no existe y corre `ingest.py` automáticamente. El primer deploy puede tardar 10-15 minutos.
+
+### CORS
+
+Ambos `main.py` y `api.py` deben incluir la URL exacta de Vercel:
+
+```python
+origins = [
+    "http://localhost:5173",
+    "https://fuvia-x.vercel.app",
+]
+```
+
+---
+
+## 📄 Paper Publicado
+
+**"AI-Based Inference System for Concrete Compressive Strength"**  
+MDPI Applied Sciences · Noviembre 2025  
+DOI: [10.3390/app152312383](https://doi.org/10.3390/app152312383)
+
+## Estructura del Proyecto
 
 ```
 /
@@ -74,59 +331,3 @@
 ```
 
 ---
-
-## Flujo de datos
-
-```
-Usuario
-  ↓
-frontend/src/components/forms/FormularioConcreto.tsx
-  ↓ hook
-frontend/src/hooks/useConcretePrediction.ts
-  ↓ service
-frontend/src/services/predictionService.ts → backend/main.py (puerto 8000)
-                                           → CatBoost (.pkl) → PredictionResponse
-  ↓ resultado
-frontend/src/components/results/ (AbramsLineChart, MixPieChart, PredictionResult)
-  ↓ trigger automático post-cálculo
-frontend/src/services/agentService.ts → agent/api.py (puerto 8001)
-  ↓
-agent/agent.py (LangGraph)
-  ├── agent/tools/rag_tool.py → agent/rag/query.py → agent/rag/chroma_db/
-  └── agent/tools/fuvia_tool.py → backend/main.py /api/predecir
-  ↓
-ChatResponse { response, report, tools_called }
-  ↓
-frontend/src/components/chat/CopilotChat.tsx  ← componente a crear
-```
-
----
-
-## Variables de entorno
-
-```bash
-# .env (raíz del proyecto)
-
-# Backend FUVIA
-VITE_API_URL=http://localhost:8000
-
-# Agente FUVIA X
-VITE_AGENT_URL=http://localhost:8001
-ANTHROPIC_API_KEY=sk-...
-LLAMA_CLOUD_API_KEY=...
-```
-
----
-
-## Comandos de desarrollo
-
-```bash
-# Backend FUVIA (terminal 1)
-cd backend && uvicorn main:app --reload --port 8000
-
-# Agente FUVIA X (terminal 2)
-cd agent && uvicorn api:app --reload --port 8001
-
-# Frontend (terminal 3)
-cd frontend && npm run dev
-```
