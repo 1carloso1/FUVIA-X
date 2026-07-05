@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from llama_index.core import VectorStoreIndex, Settings
 from llama_index.core.prompts import PromptTemplate
 from llama_index.vector_stores.chroma import ChromaVectorStore
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.embeddings.voyageai import VoyageEmbedding
 from llama_index.llms.anthropic import Anthropic
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import TextNode
@@ -68,7 +68,10 @@ def validate_environment() -> bool:
 
 
 def setup_settings():
-    Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
+    Settings.embed_model = VoyageEmbedding(
+        model_name="voyage-3",
+        voyage_api_key=os.getenv("VOYAGE_API_KEY")
+    )
     Settings.llm = Anthropic(
         model="claude-sonnet-4-6",
         api_key=os.getenv("ANTHROPIC_API_KEY")

@@ -10,7 +10,7 @@ from llama_index.core import (
     Document
 )
 from llama_index.vector_stores.chroma import ChromaVectorStore
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.embeddings.voyageai import VoyageEmbedding
 
 load_dotenv()
 
@@ -67,16 +67,15 @@ DOCUMENT_METADATA = {
 
 
 def setup_settings():
-    """
-    Configura embeddings para ingesta.
-    LLM deshabilitado — la ingesta solo necesita vectorización.
-    """
-    logger.info("Configurando modelo de embeddings: BAAI/bge-small-en-v1.5")
-    Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
-    Settings.llm  = None
+    logger.info("Configurando modelo de embeddings: voyage-3")
+    Settings.embed_model = VoyageEmbedding(
+        model_name="voyage-3",
+        voyage_api_key=os.getenv("VOYAGE_API_KEY")
+    )
+    Settings.llm          = None
     # chunk_size alto porque cada .txt es una sola página —
     # queremos que cada página sea idealmente un solo chunk
-    Settings.chunk_size    = 2048
+    Settings.chunk_size   = 2048
     Settings.chunk_overlap = 100
 
 
