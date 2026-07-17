@@ -910,12 +910,12 @@ Prueba el mecanismo descrito en la Sección 4.2: `confirmAnalysis` en `useAgentC
 | Variable | Cantidad |
 |---|---|
 | Cemento | 540.0 kg/m³ |
-| Escoria | 0.0 |
-| Ceniza volante | 0.0 |
-| Agua | 162.0 |
-| Superplastificante | 2.5 |
-| Agregado grueso | 1040.0 |
-| Agregado fino | 676.0 |
+| Escoria | 0.0 kg/m³ |
+| Ceniza volante | 0.0 kg/m³ |
+| Agua | 162.0 kg/m³ |
+| Superplastificante | 2.5 kg/m³ |
+| Agregado grueso | 1040.0 kg/m³ |
+| Agregado fino | 676.0 kg/m³ |
 | Edad | 28 días|
 
 **f'c** = 75.463
@@ -989,12 +989,12 @@ Resistencia excede alcance de ACI 318-19; se requiere documentación técnica co
 | Variable | Cantidad |
 |---|---|
 | Cemento | 540.0 kg/m³ |
-| Escoria | 0.0 |
-| Ceniza volante | 0.0 |
-| Agua | 162.0 |
-| Superplastificante | 2.5 |
-| Agregado grueso | 1040.0 |
-| Agregado fino | 676.0 |
+| Escoria | 0.0 kg/m³ |
+| Ceniza volante | 0.0 kg/m³ |
+| Agua | 162.0 kg/m³ |
+| Superplastificante | 2.5 kg/m³ |
+| Agregado grueso | 1040.0 kg/m³ |
+| Agregado fino | 676.0 kg/m³ |
 | Edad | 28 días|
 
 **f'c** = 75.463
