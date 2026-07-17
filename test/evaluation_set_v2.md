@@ -1015,7 +1015,6 @@ También puedes preguntarme sobre requisitos de durabilidad, exposición ambient
 Sí, analizar
 
 No por ahora
-
 ```
 
 **Herramienta real:** Ninguna
