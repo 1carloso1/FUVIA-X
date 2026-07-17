@@ -925,14 +925,17 @@ Prueba el mecanismo descrito en la Sección 4.2: `confirmAnalysis` en `useAgentC
 **clase** = Ultra Alta Resistencia
 
 **Mensaje auto-generado (si es visible en DevTools/Network):**
+```
 Hola, soy tu Copiloto FUVIA X. Calcula una mezcla y te daré un análisis normativo inmediato basado en ACI/ASTM.
 También puedes preguntarme sobre requisitos de durabilidad, exposición ambiental o especificaciones de materiales.
+
 ✅ Mezcla calculada — f'c 75.463 MPa · w/cm 0.3 · Ultra Alta Resistencia
 ¿Deseas que analice normativamente esta mezcla con ACI/ASTM?
 
 Sí, analizar
 
 No por ahora
+```
 
 **Herramienta real:** `Rag Normativo`
 
@@ -1001,14 +1004,19 @@ Resistencia excede alcance de ACI 318-19; se requiere documentación técnica co
 **clase** = Ultra Alta Resistencia
 
 **Mensaje auto-generado (si es visible en DevTools/Network):**
+```
 Hola, soy tu Copiloto FUVIA X. Calcula una mezcla y te daré un análisis normativo inmediato basado en ACI/ASTM.
 También puedes preguntarme sobre requisitos de durabilidad, exposición ambiental o especificaciones de materiales.
+
 ✅ Mezcla calculada — f'c 75.463 MPa · w/cm 0.3 · Ultra Alta Resistencia
+
 ¿Deseas que analice normativamente esta mezcla con ACI/ASTM?
 
 Sí, analizar
 
 No por ahora
+
+```
 
 **Herramienta real:** Ninguna
 
