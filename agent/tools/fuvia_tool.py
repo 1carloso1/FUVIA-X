@@ -21,10 +21,12 @@ El tool maneja los errores HTTP 400 del firewall y los traduce
 en mensajes claros para que el agente los comunique al usuario.
 """
 
+import os
+
 import httpx
 from langchain_core.tools import tool
 
-FUVIA_API_URL   = "https://firmitas-ai.onrender.com/api/predecir"
+FUVIA_API_URL = os.getenv("FUVIA_API_URL", "https://firmitas-ai.onrender.com/api/predecir")
 TIMEOUT_SECONDS = 45  # Render puede tener cold start de hasta 30s
 
 

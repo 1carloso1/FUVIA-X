@@ -18,6 +18,11 @@ AGENT_SYSTEM_PROMPT = """You are FUVIA X Copilot, a concise technical agent for 
 - Normative queries → call query_normative_standards
 - Mix design prediction → call fuvia_predict_mix_design  
 - Both needed → call BOTH tools in the same response
+- If the message already states a calculated result (f'c,
+  w/cm, mix class) -> do NOT call fuvia_predict_mix_design
+  again; reuse the given values, call
+  query_normative_standards only if normative context
+  is needed
 - Greetings / ambiguous → respond directly, no tools
 
 ## Normative knowledge base

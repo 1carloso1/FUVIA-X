@@ -264,9 +264,7 @@ DOI: [10.3390/app152312383](https://doi.org/10.3390/app152312383)
 │   ├── schemas.py                    # Modelos Pydantic para validación de datos (Input/Output)
 │   ├── constants.py                  # Diccionarios de traducción y constantes del sistema
 │   ├── pdf_service.py                # Motor de generación de reportes técnicos en PDF (FPDF)
-│   ├── models/                       # Archivos serializados del modelo de Machine Learning (.pkl)
-│   ├── venv/                         # Entorno virtual de Python (ignorado en .gitignore)
-│   └── requirements.txt              # Manifiesto de dependencias del backend
+│   └── models/                       # Archivos del modelo de Machine Learning (.joblib)
 │
 ├── agent/                            # Agente conversacional de IA (FUVIA X Copiloto)
 │   ├── agent.py                      # Grafo LangGraph: orquesta herramientas RAG y FUVIA
@@ -295,34 +293,41 @@ DOI: [10.3390/app152312383](https://doi.org/10.3390/app152312383)
 ├── frontend/                         # Aplicación cliente (React + TypeScript + Vite)
 │   ├── src/
 │   │   ├── components/               # Arquitectura basada en componentes reutilizables
-│   │   │   ├── forms/
-│   │   │   │   └── FormularioConcreto.tsx  # Interfaz principal de ingesta de parámetros
+│   │   │   ├── chat/
+│   │   │   │   └── CopilotChat.tsx         # Panel conversacional del Copiloto FUVIA X
 │   │   │   ├── layout/
-│   │   │   │   └── Header.tsx              # Barra de navegación y branding (Logo)
+│   │   │   │   ├── Header.tsx              # Barra de navegación y branding minimalista
+│   │   │   │   ├── MainLayout.tsx          # Layout principal: carrusel (formulario/resultados) + copiloto
+│   │   │   │   └── WarmupScreen.tsx        # Pantalla de carga durante activación de servidores Render
 │   │   │   ├── results/
-│   │   │   │   ├── AbramsLineChart.tsx     # Renderizado de la Curva de Abrams (Recharts)
-│   │   │   │   ├── MixPieChart.tsx         # Gráfico de composición volumétrica
-│   │   │   │   └── PredictionResult.tsx    # Tarjeta de métricas inferidas por la IA
+│   │   │   │   ├── AbramsLineChart.tsx     # Curva de Abrams — tema claro (usado en PDF)
+│   │   │   │   ├── AbramsLineChartDark.tsx # Curva de Abrams — tema oscuro (usado en UI)
+│   │   │   │   ├── MixPieChart.tsx         # Composición volumétrica — tema claro (usado en PDF)
+│   │   │   │   ├── MixPieChartDark.tsx     # Composición volumétrica — tema oscuro (usado en UI)
+│   │   │   │   └── PredictionResultDark.tsx # Métricas de predicción — tema oscuro
 │   │   │   ├── tooltips/
-│   │   │   │   └── AbramsTooltip.tsx       # Tooltips interactivos para visualización de datos
+│   │   │   │   └── AbramsTooltip.tsx       # Tooltip interactivo para la Curva de Abrams
 │   │   │   └── ui/
-│   │   │       ├── NumberInput.tsx         # Componente atómico para captura de inputs numéricos
-│   │   │       └── ValidationModal.tsx     # Modal de validación de resistencia en laboratorio
+│   │   │       ├── NumberInput.tsx         # Input numérico — tema claro (legado)
+│   │   │       ├── NumberInputDark.tsx     # Input numérico — tema oscuro
+│   │   │       └── ValidationModal.tsx     # Modal de validación experimental de resistencia
 │   │   │
 │   │   ├── constants/
-│   │   │   └── concreteConstants.ts        # Variables de configuración global del frontend
+│   │   │   └── concreteConstants.ts        # Estado inicial y constantes del formulario
 │   │   ├── hooks/
-│   │   │   └── useConcretePrediction.ts    # Custom Hook: controlador de estado y flujos de la UI
+│   │   │   ├── useAgentChat.ts             # Estado del chat: mensajes, confirmación de análisis, stop
+│   │   │   ├── useConcretePrediction.ts    # Estado del formulario, predicción y generación de PDF
+│   │   │   └── useSystemWarmup.ts          # Warm-up paralelo de backend y agente al iniciar
 │   │   ├── services/
-│   │   │   ├── predictionService.ts        # Cliente HTTP para comunicación con backend FUVIA
-│   │   │   └── agentService.ts             # Cliente HTTP para comunicación con el agente (api.py)
+│   │   │   ├── agentService.ts             # Cliente HTTP para el agente LangGraph (api.py)
+│   │   │   └── predictionService.ts        # Cliente HTTP para el backend FUVIA (CatBoost)
 │   │   ├── types/
-│   │   │   └── concreteTypes.ts            # Definición de interfaces estrictas para TypeScript
+│   │   │   └── concreteTypes.ts            # Interfaces TypeScript: ConcreteInputData, PredictionResponse
 │   │   └── utils/
-│   │       ├── curvaAbrams.ts              # Motor de cálculo matemático para simulación de la curva
-│   │       └── styleMappers.ts             # Lógica de renderizado dinámico según rangos de MPa
+│   │       ├── curvaAbrams.ts              # Generación matemática de puntos para la Curva de Abrams
+│   │       └── styleMappers.ts             # Mapeo de clases Tailwind según clase de resistencia (dark/light)
 │   │
-│   ├── App.tsx                       # Contenedor raíz de la aplicación
+│   ├── App.tsx                       # Contenedor raíz: gate de warmup → WarmupScreen | MainLayout
 │   ├── index.css                     # Estilos globales y directivas de Tailwind CSS
 │   ├── main.tsx                      # Punto de montaje del Virtual DOM
 │   └── package.json                  # Manifiesto de dependencias y scripts de Node.js
