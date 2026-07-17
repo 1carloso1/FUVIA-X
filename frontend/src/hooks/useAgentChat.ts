@@ -14,6 +14,7 @@ export interface ChatEntry {
   tools?:    string[];
   loading?:  boolean;
   isPrompt?: boolean;  // true cuando espera confirmación del usuario
+  chosenOption?: 'confirmed' | 'declined';
 }
 
 // ----------------------------------------------------------------
@@ -96,6 +97,7 @@ export function useAgentChat(
         role:    'assistant',
         content: `✅ **Mezcla calculada** — f'c **${fc} MPa** · w/cm **${wcm}** · ${clase}\n\n¿Deseas que analice normativamente esta mezcla con ACI/ASTM?`,
         isPrompt: true,  // marca especial para mostrar botones de confirmación
+        chosenOption: undefined,
       } as ChatEntry,
     ]);
 
@@ -107,47 +109,51 @@ export function useAgentChat(
   // ----------------------------------------------------------------
 
   const confirmAnalysis = () => {
-    const pendingMessage = pendingAnalysisRef.current;
-    if (!pendingMessage || isLoading) return;
+  const pendingMessage = pendingAnalysisRef.current;
+  if (!pendingMessage || isLoading) return;
 
-    pendingAnalysisRef.current = null;
+  pendingAnalysisRef.current = null;
 
-    // Reemplazar el mensaje de pregunta por el de carga
-    setMessages(prev => [
-      ...prev.filter(m => !(m as ChatEntry & { isPrompt?: boolean }).isPrompt),
-      { role: 'assistant', content: '', loading: true }
-    ]);
-    setIsLoading(true);
+  // Congelar el mensaje de pregunta mostrando la opción elegida
+  setMessages(prev => [
+    ...prev.map(m =>
+      (m as ChatEntry & { isPrompt?: boolean }).isPrompt
+        ? { ...m, isPrompt: false, chosenOption: 'confirmed' as const }
+        : m
+    ),
+    { role: 'assistant', content: '', loading: true }
+  ]);
+  setIsLoading(true);
 
-    const controller = new AbortController();
-    abortRef.current = controller;
+  const controller = new AbortController();
+  abortRef.current = controller;
 
-    sendMessage(pendingMessage, [], controller.signal)
-      .then(response => {
-        if (controller.signal.aborted) return;
-        setMessages(prev => [
-          ...prev.filter(m => !m.loading),
-          {
-            role:    'assistant',
-            content: response.response,
-            report:  response.report,
-            tools:   response.tools_called,
-          }
-        ]);
-        if (response.report) setLastReport(response.report);
-      })
-      .catch(err => {
-        if (err?.name === 'AbortError') return;
-        setMessages(prev => [
-          ...prev.filter(m => !m.loading),
-          { role: 'assistant', content: 'No pude analizar la mezcla en este momento. Puedes preguntarme directamente sobre los resultados.' }
-        ]);
-      })
-      .finally(() => {
-        abortRef.current = null;
-        setIsLoading(false);
-      });
-  };
+  sendMessage(pendingMessage, [], controller.signal)
+    .then(response => {
+      if (controller.signal.aborted) return;
+      setMessages(prev => [
+        ...prev.filter(m => !m.loading),
+        {
+          role:    'assistant',
+          content: response.response,
+          report:  response.report,
+          tools:   response.tools_called,
+        }
+      ]);
+      if (response.report) setLastReport(response.report);
+    })
+    .catch(err => {
+      if (err?.name === 'AbortError') return;
+      setMessages(prev => [
+        ...prev.filter(m => !m.loading),
+        { role: 'assistant', content: 'No pude analizar la mezcla en este momento. Puedes preguntarme directamente sobre los resultados.' }
+      ]);
+    })
+    .finally(() => {
+      abortRef.current = null;
+      setIsLoading(false);
+    });
+};
 
   // ----------------------------------------------------------------
   // RECHAZAR análisis normativo
