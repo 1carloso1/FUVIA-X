@@ -924,7 +924,7 @@ Prueba el mecanismo descrito en la Sección 4.2: `confirmAnalysis` en `useAgentC
 
 **clase** = Ultra Alta Resistencia
 
-**Mensaje auto-generado (si es visible en DevTools/Network):**
+**Mensaje auto-generado:**
 ```
 Hola, soy tu Copiloto FUVIA X. Calcula una mezcla y te daré un análisis normativo inmediato basado en ACI/ASTM.
 También puedes preguntarme sobre requisitos de durabilidad, exposición ambiental o especificaciones de materiales.
@@ -1003,7 +1003,7 @@ Resistencia excede alcance de ACI 318-19; se requiere documentación técnica co
 
 **clase** = Ultra Alta Resistencia
 
-**Mensaje auto-generado (si es visible en DevTools/Network):**
+**Mensaje auto-generado:**
 ```
 Hola, soy tu Copiloto FUVIA X. Calcula una mezcla y te daré un análisis normativo inmediato basado en ACI/ASTM.
 También puedes preguntarme sobre requisitos de durabilidad, exposición ambiental o especificaciones de materiales.
