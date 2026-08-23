@@ -19,6 +19,17 @@ interface TooltipProps {
   payload?: { value: number; payload: SHAPContribution }[];
 }
 
+const SHORT_NAMES: Record<string, string> = {
+  'Cement':             'Cemento',
+  'Blast Furnace Slag': 'Escoria',
+  'Fly Ash':            'Ceniza',
+  'Water':              'Agua',
+  'Superplasticizer':   'Aditivo',
+  'Coarse Aggregate':   'Grava',
+  'Fine Aggregate':     'Arena',
+  'Age':                'Edad',
+};
+
 const CustomTooltip = ({ active, payload }: TooltipProps) => {
   if (!active || !payload?.length) return null;
   const { feature, value } = payload[0].payload;
@@ -30,7 +41,7 @@ const CustomTooltip = ({ active, payload }: TooltipProps) => {
       style={{ borderColor: color }}
     >
       <p className="font-bold text-slate-300 text-[10px] uppercase tracking-wider mb-1">
-        {feature}
+        {SHORT_NAMES[feature] ?? feature}  {/* ← cambio aquí */}
       </p>
       <p className="text-[11px]" style={{ color }}>
         {sign}{value.toFixed(3)} MPa
@@ -73,16 +84,7 @@ export default function SHAPContributionCard({
   shap_contributions,
   isPdf = false,
 }: SHAPContributionCardProps) {
-  const SHORT_NAMES: Record<string, string> = {
-  'Cement':             'Cemento',
-  'Blast Furnace Slag': 'Escoria',
-  'Fly Ash':            'Ceniza',
-  'Water':              'Agua',
-  'Superplasticizer':   'Aditivo',
-  'Coarse Aggregate':   'Grava',
-  'Fine Aggregate':     'Arena',
-  'Age':                'Edad',
-};
+
 
   const chartData = shap_contributions.map(c => ({
     ...c,
