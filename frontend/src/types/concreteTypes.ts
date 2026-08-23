@@ -10,6 +10,11 @@ export interface ConcreteInputData {
   age: number | string;
 }
 
+export interface SHAPContribution {
+  feature: string;   // nombre en inglés: "Cement", "Water", etc.
+  value:   number;   // contribución en MPa (positiva = aumenta f'c, negativa = reduce)
+}
+
 export interface PredictionResponse {
   resistencia_estimada: number;
   relacion_agua_cemento: number;

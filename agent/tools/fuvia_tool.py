@@ -182,4 +182,12 @@ def _format_fuvia_response(inputs: dict, output: dict) -> str:
         for r in recomendaciones:
             lines.append(f"  • {r}")
 
+    shap_contribs = output.get('shap_contributions', [])
+    if shap_contribs:
+        lines.append("")
+        lines.append("CONTRIBUCIONES SHAP (influencia de cada insumo en MPa):")
+        for c in shap_contribs[:4]:  # top 4 para no saturar el contexto
+            sign = "+" if c['value'] >= 0 else ""
+            lines.append(f"  {c['feature']}: {sign}{c['value']:.3f} MPa")
+    
     return "\n".join(lines)

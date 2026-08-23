@@ -13,7 +13,7 @@ export interface ChatEntry {
   report?:   AgentReport | null;
   tools?:    string[];
   loading?:  boolean;
-  isPrompt?: boolean;  // true cuando espera confirmación del usuario
+  isPrompt?: boolean;
   chosenOption?: 'confirmed' | 'declined';
 }
 
@@ -34,7 +34,7 @@ export function useAgentChat(
   const abortRef  = useRef<AbortController | null>(null);
 
   // ----------------------------------------------------------------
-  // STOP — cancela la generación en curso
+  // STOP
   // ----------------------------------------------------------------
 
   const stopGeneration = () => {
@@ -64,7 +64,6 @@ export function useAgentChat(
   // TRIGGER al recibir resultado — pregunta si desea análisis
   // ----------------------------------------------------------------
 
-  // Guardamos los datos de la mezcla para usarlos si el usuario confirma
   const pendingAnalysisRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -74,7 +73,18 @@ export function useAgentChat(
     const fc    = resultado.resistencia_estimada;
     const clase = resultado.clase_resistencia;
 
-    // Guardamos el mensaje completo para enviarlo si el usuario confirma
+    // Construir sección SHAP si está disponible
+    const shapSection = resultado.shap_contributions?.length
+      ? (
+          `\nCONTRIBUCIONES SHAP (top 4 — influencia de cada insumo en MPa):\n` +
+          resultado.shap_contributions.slice(0, 4).map(c =>
+            `- ${c.feature}: ${c.value >= 0 ? '+' : ''}${c.value.toFixed(3)} MPa`
+          ).join('\n') +
+          `\nValor base del modelo: ${resultado.shap_base_value?.toFixed(2)} MPa` +
+          `\n(Estos valores indican cuánto suma o resta cada insumo al valor base para llegar a f'c = ${fc} MPa)`
+        )
+      : '';
+
     pendingAnalysisRef.current = (
       `Se acaba de calcular una mezcla con los siguientes datos:\n` +
       `- Cemento: ${Number(form.cement)} kg/m³\n` +
@@ -85,18 +95,19 @@ export function useAgentChat(
       `Resultado del modelo CatBoost:\n` +
       `- f'c estimado: ${fc} MPa\n` +
       `- Relación w/cm: ${wcm}\n` +
-      `- Clase de resistencia: ${clase}\n\n` +
-      `Analiza estos resultados y dime si la mezcla presenta alguna observación normativa importante. ` +
-      `Si detectas algún potencial incumplimiento con ACI/ASTM, menciónalo directamente.`
+      `- Clase de resistencia: ${clase}\n` +
+      shapSection +
+      `\n\nAnaliza estos resultados y dime si la mezcla presenta alguna observación normativa importante. ` +
+      `Si detectas algún potencial incumplimiento con ACI/ASTM, menciónalo directamente. ` +
+      `IMPORTANTE: Los valores SHAP anteriores son solo contexto de referencia. NO los menciones ni los interpretes en tu análisis inicial — solo úsalos si el usuario pregunta explícitamente sobre SHAP o sobre la contribución de cada insumo.`
     );
 
-    // Solo mostrar pregunta — sin llamar al agente aún
     setMessages(prev => [
       ...prev,
       {
         role:    'assistant',
         content: `✅ **Mezcla calculada** — f'c **${fc} MPa** · w/cm **${wcm}** · ${clase}\n\n¿Deseas que analice normativamente esta mezcla con ACI/ASTM?`,
-        isPrompt: true,  // marca especial para mostrar botones de confirmación
+        isPrompt: true,
         chosenOption: undefined,
       } as ChatEntry,
     ]);
@@ -109,51 +120,50 @@ export function useAgentChat(
   // ----------------------------------------------------------------
 
   const confirmAnalysis = () => {
-  const pendingMessage = pendingAnalysisRef.current;
-  if (!pendingMessage || isLoading) return;
+    const pendingMessage = pendingAnalysisRef.current;
+    if (!pendingMessage || isLoading) return;
 
-  pendingAnalysisRef.current = null;
+    pendingAnalysisRef.current = null;
 
-  // Congelar el mensaje de pregunta mostrando la opción elegida
-  setMessages(prev => [
-    ...prev.map(m =>
-      (m as ChatEntry & { isPrompt?: boolean }).isPrompt
-        ? { ...m, isPrompt: false, chosenOption: 'confirmed' as const }
-        : m
-    ),
-    { role: 'assistant', content: '', loading: true }
-  ]);
-  setIsLoading(true);
+    setMessages(prev => [
+      ...prev.map(m =>
+        (m as ChatEntry & { isPrompt?: boolean }).isPrompt
+          ? { ...m, isPrompt: false, chosenOption: 'confirmed' as const }
+          : m
+      ),
+      { role: 'assistant', content: '', loading: true }
+    ]);
+    setIsLoading(true);
 
-  const controller = new AbortController();
-  abortRef.current = controller;
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-  sendMessage(pendingMessage, [], controller.signal)
-    .then(response => {
-      if (controller.signal.aborted) return;
-      setMessages(prev => [
-        ...prev.filter(m => !m.loading),
-        {
-          role:    'assistant',
-          content: response.response,
-          report:  response.report,
-          tools:   response.tools_called,
-        }
-      ]);
-      if (response.report) setLastReport(response.report);
-    })
-    .catch(err => {
-      if (err?.name === 'AbortError') return;
-      setMessages(prev => [
-        ...prev.filter(m => !m.loading),
-        { role: 'assistant', content: 'No pude analizar la mezcla en este momento. Puedes preguntarme directamente sobre los resultados.' }
-      ]);
-    })
-    .finally(() => {
-      abortRef.current = null;
-      setIsLoading(false);
-    });
-};
+    sendMessage(pendingMessage, [], controller.signal)
+      .then(response => {
+        if (controller.signal.aborted) return;
+        setMessages(prev => [
+          ...prev.filter(m => !m.loading),
+          {
+            role:    'assistant',
+            content: response.response,
+            report:  response.report,
+            tools:   response.tools_called,
+          }
+        ]);
+        if (response.report) setLastReport(response.report);
+      })
+      .catch(err => {
+        if (err?.name === 'AbortError') return;
+        setMessages(prev => [
+          ...prev.filter(m => !m.loading),
+          { role: 'assistant', content: 'No pude analizar la mezcla en este momento. Puedes preguntarme directamente sobre los resultados.' }
+        ]);
+      })
+      .finally(() => {
+        abortRef.current = null;
+        setIsLoading(false);
+      });
+  };
 
   // ----------------------------------------------------------------
   // RECHAZAR análisis normativo
@@ -162,7 +172,11 @@ export function useAgentChat(
   const declineAnalysis = () => {
     pendingAnalysisRef.current = null;
     setMessages(prev => [
-      ...prev.filter(m => !(m as ChatEntry & { isPrompt?: boolean }).isPrompt),
+      ...prev.map(m =>
+        (m as ChatEntry & { isPrompt?: boolean }).isPrompt
+          ? { ...m, isPrompt: false, chosenOption: 'declined' as const }
+          : m
+      ),
       {
         role:    'assistant',
         content: 'Entendido. Si necesitas el análisis normativo en cualquier momento, solo pídelo.',
@@ -190,7 +204,10 @@ export function useAgentChat(
       .filter(m => !m.loading && m.content)
       .map(m => ({ role: m.role, content: m.content }));
 
-    setMessages(prev => [...prev, { role: 'user', content: trimmed }, { role: 'assistant', content: '', loading: true }]);
+    setMessages(prev => [...prev,
+      { role: 'user', content: trimmed },
+      { role: 'assistant', content: '', loading: true }
+    ]);
     setInput('');
     setIsLoading(true);
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import PredictionResultDark from '../results/PredictionResultDark';
 import MixCompositionCardDark from '../results/MixPieChartDark';
 import AbramsCurveCardDark from '../results/AbramsLineChartDark';
+import SHAPContributionCard from '../results/SHAPContributionCard';
 import MixCompositionCard from '../results/MixPieChart';
 import AbramsCurveCard from '../results/AbramsLineChart';
 import CopilotChat from '../chat/CopilotChat';
@@ -40,18 +41,15 @@ export default function MainLayout() {
     confirmAnalysis, declineAnalysis, handleKeyDown,
   } = useAgentChat(resultado, form);
 
-  
-
-  // Agregar después de los hooks, antes de handleFormSubmit
+  // Cambiar automáticamente a tab de resultados cuando llega la predicción
   useEffect(() => {
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  if (resultado) setActiveTab('resultados');
-}, [resultado]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (resultado) setActiveTab('resultados');
+  }, [resultado]);
 
-// handleFormSubmit vuelve a su versión simple
-const handleFormSubmit = async (e: React.FormEvent) => {
-  await handleSubmit(e);
-};
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    await handleSubmit(e);
+  };
 
   const handleFormReset = () => {
     handleReset();
@@ -111,22 +109,22 @@ const handleFormSubmit = async (e: React.FormEvent) => {
                   <div>
                     <p className="text-[11px] font-semibold text-slate-300">Diseño de Mezcla</p>
                     <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                      Para que el sistema infiera con precisión la resistencia de la mezcla, las cantidades ingresadas deben corresponder a las proporciones de diseño para {' '}
+                      Para que el sistema infiera con precisión la resistencia de la mezcla, las cantidades ingresadas deben corresponder a las proporciones de diseño para{' '}
                       <span className="text-blue-400 font-medium">un metro cúbico (1 m³)</span> de concreto.
                     </p>
                   </div>
                 </div>
 
-                {/* Grid de inputs — adaptado al tema oscuro */}
+                {/* Grid de inputs */}
                 <form onSubmit={handleFormSubmit} className="grid grid-cols-2 gap-3">
-                  <NumberInputDark label="Cemento (kg/m³)"          name="cement"           value={form.cement}          onChange={handleChange} disabled={isLocked} hasError={camposError.includes('cement')} />
-                  <NumberInputDark label="Escoria (kg/m³)"           name="slag"             value={form.slag}            onChange={handleChange} disabled={isLocked} hasError={camposError.includes('slag')} />
-                  <NumberInputDark label="Ceniza Volante (kg/m³)"    name="flyash"           value={form.flyash}          onChange={handleChange} disabled={isLocked} hasError={camposError.includes('flyash')} />
-                  <NumberInputDark label="Agua (kg/m³)"              name="water"            value={form.water}           onChange={handleChange} disabled={isLocked} hasError={camposError.includes('water')} />
+                  <NumberInputDark label="Cemento (kg/m³)"           name="cement"           value={form.cement}          onChange={handleChange} disabled={isLocked} hasError={camposError.includes('cement')} />
+                  <NumberInputDark label="Escoria (kg/m³)"            name="slag"             value={form.slag}            onChange={handleChange} disabled={isLocked} hasError={camposError.includes('slag')} />
+                  <NumberInputDark label="Ceniza Volante (kg/m³)"     name="flyash"           value={form.flyash}          onChange={handleChange} disabled={isLocked} hasError={camposError.includes('flyash')} />
+                  <NumberInputDark label="Agua (kg/m³)"               name="water"            value={form.water}           onChange={handleChange} disabled={isLocked} hasError={camposError.includes('water')} />
                   <NumberInputDark label="Superplastificante (kg/m³)" name="superplasticizer" value={form.superplasticizer} onChange={handleChange} disabled={isLocked} hasError={camposError.includes('superplasticizer')} step={0.1} />
-                  <NumberInputDark label="Ag. Grueso (kg/m³)"        name="coarseaggregate"  value={form.coarseaggregate} onChange={handleChange} disabled={isLocked} hasError={camposError.includes('coarseaggregate')} />
-                  <NumberInputDark label="Ag. Fino (kg/m³)"          name="fineaggregate"    value={form.fineaggregate}   onChange={handleChange} disabled={isLocked} hasError={camposError.includes('fineaggregate')} />
-                  <NumberInputDark label="Edad (días)"               name="age"              value={form.age}             onChange={handleChange} disabled={isLocked} hasError={camposError.includes('age')} />
+                  <NumberInputDark label="Ag. Grueso (kg/m³)"         name="coarseaggregate"  value={form.coarseaggregate} onChange={handleChange} disabled={isLocked} hasError={camposError.includes('coarseaggregate')} />
+                  <NumberInputDark label="Ag. Fino (kg/m³)"           name="fineaggregate"    value={form.fineaggregate}   onChange={handleChange} disabled={isLocked} hasError={camposError.includes('fineaggregate')} />
+                  <NumberInputDark label="Edad (días)"                name="age"              value={form.age}             onChange={handleChange} disabled={isLocked} hasError={camposError.includes('age')} />
 
                   <div className="col-span-2 mt-2">
                     <button
@@ -183,6 +181,13 @@ const handleFormSubmit = async (e: React.FormEvent) => {
                   ratio={resultado.relacion_agua_cemento}
                   strength={resultado.resistencia_estimada}
                 />
+                {/* Contribuciones SHAP — XAI */}
+                {resultado.shap_contributions?.length > 0 && (
+                  <SHAPContributionCard
+                    shap_base_value={resultado.shap_base_value}
+                    shap_contributions={resultado.shap_contributions}
+                  />
+                )}
                 {/* Botones de acción */}
                 <div className="flex gap-3 pt-2">
                   <button
@@ -259,6 +264,14 @@ const handleFormSubmit = async (e: React.FormEvent) => {
         <div ref={printRef} className="absolute -left-[9999px] w-[800px] bg-white">
           <MixCompositionCard data={pieData} age={Number(form.age)} isPdf={true} />
           <AbramsCurveCard ratio={resultado.relacion_agua_cemento} strength={resultado.resistencia_estimada} />
+          {/* SHAP en el PDF — usa isPdf para deshabilitar animaciones */}
+          {resultado.shap_contributions?.length > 0 && (
+            <SHAPContributionCard
+              shap_base_value={resultado.shap_base_value}
+              shap_contributions={resultado.shap_contributions}
+              isPdf={true}
+            />
+          )}
         </div>
       )}
     </div>

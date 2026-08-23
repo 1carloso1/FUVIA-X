@@ -26,6 +26,9 @@ class ConcretoOutput(BaseModel):
     descripcion_ac: str
     caracteristicas_ac: list[str]
     mensaje: str
+    # ── SHAP ──────────────────────────────────────────────────────
+    shap_base_value:    float
+    shap_contributions: list[dict]   # [{"feature": str, "value": float}, ...]
 
 
 # 3. Molde para el reporte completo que se guardará en el PDF desde el frontend
