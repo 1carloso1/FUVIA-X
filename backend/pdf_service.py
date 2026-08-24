@@ -34,7 +34,7 @@ class ReportePDF(FPDF):
 
         self.set_font("helvetica", "B", 8)
         self.set_text_color(100, 116, 139)
-        self.cell(0, 5, "EVALUACIÓN PREDICTIVA DE DISEÑOS DE MEZCLA", align="R")
+        self.cell(0, 5, "PREDICTIVE EVALUATION OF MIX DESIGNS", align="R")
 
         self.set_fill_color(0, 53, 122)
         self.rect(0, 26, self.w, 1.5, style="F")
@@ -47,7 +47,7 @@ class ReportePDF(FPDF):
         self.set_font("helvetica", "I", 8)
         self.set_text_color(148, 163, 184)
         v = self.version_software if hasattr(self, 'version_software') else "0.0.0"
-        self.cell(0, 10, f"FUVIA v.{v}  |  LIAI  |  Página {self.page_no()}", align="C")
+        self.cell(0, 10, f"FUVIA v.{v}  |  LIAI  |  Page {self.page_no()}", align="C")
 
     def create_section_header(self, title):
         self.set_fill_color(248, 250, 252)
@@ -57,8 +57,11 @@ class ReportePDF(FPDF):
         self.ln(2)
 
 
+def _limpiar_texto(texto: str) -> str:
+    return texto.replace('—', '-').replace('-', '-').replace('"', '"').replace('"', '"')
+
+
 def _insertar_imagen_base64(pdf: FPDF, base64_str: str, x: int = 20, w: int = 170) -> None:
-    """Decodifica un data-URI base64 y lo inserta en el PDF como imagen temporal."""
     data = base64_str.split("base64,")[1] if "base64," in base64_str else base64_str
     imagen_bytes = base64.b64decode(data)
     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
@@ -81,15 +84,15 @@ def generar_pdf_bytes(
     pdf.add_page()
 
     # ==========================================
-    # --- 1. PARÁMETROS DE DISEÑO DE MEZCLA ---
+    # --- 1. MIX DESIGN PARAMETERS ---
     # ==========================================
-    pdf.create_section_header("1. Parámetros de Diseño de Mezcla")
+    pdf.create_section_header("1. Mix Design Parameters")
 
     pdf.set_font("helvetica", "B", 9)
     pdf.set_fill_color(241, 245, 249)
-    pdf.cell(90, 8, " Componente",  border=1, fill=True)
-    pdf.cell(50, 8, " Cantidad",    border=1, fill=True, align="C")
-    pdf.cell(40, 8, " Unidad",      border=1, fill=True, align="C", ln=True)
+    pdf.cell(90, 8, " Component", border=1, fill=True)
+    pdf.cell(50, 8, " Quantity",  border=1, fill=True, align="C")
+    pdf.cell(40, 8, " Unit",      border=1, fill=True, align="C", ln=True)
 
     pdf.set_font("helvetica", "", 9)
     peso_total  = 0
@@ -97,35 +100,35 @@ def generar_pdf_bytes(
 
     for material, cantidad in inputs_dict.items():
         traduccion = TRADUCCIONES_MATERIALES.get(material, {"nombre": material.capitalize(), "unidad": "N/A"})
-        pdf.cell(90, 7, f" {traduccion['nombre']}",  border=1)
-        pdf.cell(50, 7, f" {cantidad:,.2f}",          border=1, align="C")
-        pdf.cell(40, 7, f" {traduccion['unidad']}",   border=1, align="C", ln=True)
+        pdf.cell(90, 7, f" {traduccion['nombre']}", border=1)
+        pdf.cell(50, 7, f" {cantidad:,.2f}",         border=1, align="C")
+        pdf.cell(40, 7, f" {traduccion['unidad']}",  border=1, align="C", ln=True)
         if material.lower() != "age":
             peso_total += float(cantidad)
 
     pdf.set_font("helvetica", "B", 9)
     pdf.set_fill_color(248, 250, 252)
-    pdf.cell(90, 8, "Densidad Total",       border=1, fill=True)
-    pdf.cell(50, 8, f" {peso_total:,.2f}",  border=1, align="C", fill=True)
-    pdf.cell(40, 8, " kg/m³",               border=1, align="C", fill=True, ln=True)
+    pdf.cell(90, 8, "Total Density",       border=1, fill=True)
+    pdf.cell(50, 8, f" {peso_total:,.2f}", border=1, align="C", fill=True)
+    pdf.cell(40, 8, " kg/m3",              border=1, align="C", fill=True, ln=True)
     pdf.ln(8)
 
     # ==================================================
-    # --- 2. RESULTADOS DEL SISTEMA DE INFERENCIA ---
+    # --- 2. INFERENCE SYSTEM RESULTS ---
     # ==================================================
-    pdf.create_section_header("2. Resultados del Sistema de Inferencia")
+    pdf.create_section_header("2. Inference System Results")
 
     pdf.set_font("helvetica", "B", 9)
     pdf.set_fill_color(241, 245, 249)
-    pdf.cell(90, 8, " Parámetro Analizado",  border=1, fill=True)
-    pdf.cell(90, 8, " Resultado Obtenido",   border=1, fill=True, align="C", ln=True)
+    pdf.cell(90, 8, " Analyzed Parameter", border=1, fill=True)
+    pdf.cell(90, 8, " Obtained Result",    border=1, fill=True, align="C", ln=True)
 
     pdf.set_font("helvetica", "", 9)
     metrics = [
-        ("Resistencia Real (Laboratorio)", f"{datos.resistencia_real} MPa" if is_valid else "No registrada"),
-        ("Resistencia Inferida (IA)",       f"{datos.prediccion.resistencia_estimada} MPa"),
-        ("Relación Agua/Cemento",           f"{datos.prediccion.relacion_agua_cemento} ({datos.prediccion.clase_ac})"),
-        ("Relación Grava/Arena",            f"{datos.prediccion.relacion_grava_arena} ({datos.prediccion.clase_ga})")
+        ("Real Strength (Laboratory)", f"{datos.resistencia_real} MPa" if is_valid else "Not recorded"),
+        ("Inferred Strength (AI)",     f"{datos.prediccion.resistencia_estimada} MPa"),
+        ("Water/Cement Ratio",         f"{datos.prediccion.relacion_agua_cemento} ({datos.prediccion.clase_ac})"),
+        ("Coarse/Fine Aggregate Ratio",f"{datos.prediccion.relacion_grava_arena} ({datos.prediccion.clase_ga})")
     ]
     for label, val in metrics:
         pdf.cell(90, 7, f" {label}", border=1)
@@ -133,92 +136,93 @@ def generar_pdf_bytes(
     pdf.ln(8)
 
     # ===================================
-    # --- 3. CÁLCULO DE LOS ERRORES ---
+    # --- 3. ERROR CALCULATION ---
     # ===================================
-    pdf.create_section_header("3. Cálculo de los Errores")
+    pdf.create_section_header("3. Error Calculation")
 
     str_error_abs = f" {error_abs:.3f} MPa" if (is_valid and error_abs is not None) else " N/A"
     str_error_rel = f" {error_rel:.3f} %"   if (is_valid and error_rel is not None) else " N/A"
 
     pdf.set_font("helvetica", "B", 9)
     pdf.set_fill_color(241, 245, 249)
-    pdf.cell(60, 8, " Métrica de Desviación", border=1, fill=True)
-    pdf.cell(60, 8, " Valor Calculado",        border=1, fill=True, align="C")
-    pdf.cell(60, 8, " Meta del Sistema",       border=1, fill=True, align="C", ln=True)
+    pdf.cell(60, 8, " Deviation Metric", border=1, fill=True)
+    pdf.cell(60, 8, " Calculated Value", border=1, fill=True, align="C")
+    pdf.cell(60, 8, " System Target",    border=1, fill=True, align="C", ln=True)
 
     pdf.set_font("helvetica", "", 9)
-    pdf.cell(60, 7, " Error Absoluto", border=1)
+    pdf.cell(60, 7, " Absolute Error", border=1)
     pdf.cell(60, 7, str_error_abs,      border=1, align="C")
     pdf.cell(60, 7, " < 10.00 MPa",    border=1, align="C", ln=True)
 
-    pdf.cell(60, 7, " Error Relativo", border=1)
+    pdf.cell(60, 7, " Relative Error", border=1)
     pdf.cell(60, 7, str_error_rel,      border=1, align="C")
     pdf.cell(60, 7, " N/A",             border=1, align="C", ln=True)
 
     pdf.ln(4)
     pdf.set_font("helvetica", "B", 9)
-    pdf.cell(0, 6, "Dictamen de Confiabilidad Predictiva:", ln=True)
+    pdf.cell(0, 6, "Predictive Reliability Assessment:", ln=True)
     pdf.set_font("helvetica", "", 9)
 
     if is_valid and error_abs is not None:
         if error_abs < 10:
-            texto_conclusion = (
-                f"El sistema de inferencia demuestra un alto nivel de precisión. El error absoluto "
-                f"registrado de **{error_abs:.3f} MPa** se encuentra estrictamente dentro del margen de "
-                f"tolerancia admisible (< 10.00 MPa). Este resultado certifica la confiabilidad algorítmica "
-                f"del modelo para estimar el comportamiento mecánico de esta dosificación específica, "
-                f"validando su uso como herramienta de soporte técnico."
+            texto_conclusion = _limpiar_texto(
+                f"The inference system demonstrates a high level of accuracy. The recorded absolute error "
+                f"of **{error_abs:.3f} MPa** falls strictly within the admissible tolerance margin "
+                f"(< 10.00 MPa). This result certifies the algorithmic reliability of the model for "
+                f"estimating the mechanical behavior of this specific mix design, validating its use "
+                f"as a technical support tool."
             )
         else:
-            texto_conclusion = (
-                f"Se ha detectado una divergencia técnica significativa en la predicción. El error absoluto "
-                f"calculado de **{error_abs:.3f} MPa** excede el umbral máximo de tolerancia establecido "
-                f"(< 10.00 MPa). Se determina que la estimación de la IA no es suficientemente precisa en "
-                f"este caso, por lo que se recomienda una validación tradicional de laboratorio o una futura "
-                f"recalibración del modelo base."
+            texto_conclusion = _limpiar_texto(
+                f"A significant technical divergence has been detected in the prediction. The calculated "
+                f"absolute error of **{error_abs:.3f} MPa** exceeds the maximum established tolerance "
+                f"threshold (< 10.00 MPa). It is determined that the AI estimation is not sufficiently "
+                f"accurate in this case; traditional laboratory validation or future model recalibration "
+                f"is recommended."
             )
     else:
-        texto_conclusion = (
-            "Dado que no se proporcionó un valor empírico de resistencia real en laboratorio, "
-            "el sistema ha omitido la validación cruzada algorítmica. Los resultados aquí presentados representan "
-            "una estimación teórica fundamentada exclusivamente en el modelo de Inteligencia Artificial. "
-            "Se recomienda encarecidamente someter esta dosificación a pruebas físicas de compresión "
-            "para certificar normativamente su viabilidad estructural en obra."
+        texto_conclusion = _limpiar_texto(
+            "Since no empirical compressive strength value from laboratory testing was provided, "
+            "the system has omitted the algorithmic cross-validation. The results presented here represent "
+            "a theoretical estimate based exclusively on the Artificial Intelligence model. "
+            "It is strongly recommended to subject this mix design to physical compression tests "
+            "to normatively certify its structural viability in construction."
         )
 
     pdf.multi_cell(0, 5, texto_conclusion, align="J", markdown=True)
 
     # ===============================
-    # --- 4. EVIDENCIA GRÁFICA --- (Página 1 — pie chart + Abrams)
+    # --- 4. GRAPHICAL AND INFERENTIAL EVIDENCE ---
     # ===============================
     if pdf.get_y() > 180:
         pdf.add_page()
 
-    pdf.create_section_header("4. Evidencia Gráfica e Inferencial")
+    pdf.create_section_header("4. Graphical and Inferential Evidence")
 
     if datos.graficas_base64:
         _insertar_imagen_base64(pdf, datos.graficas_base64)
 
     # ===============================
-    # --- 5. ANÁLISIS SHAP XAI --- (Página 2 — solo si existe)
+    # --- 5. EXPLAINABILITY ANALYSIS (SHAP - XAI) ---
     # ===============================
     if datos.shap_graficas_base64:
         pdf.add_page()
-        pdf.create_section_header("5. Análisis de Explicabilidad (SHAP - XAI)")
+        pdf.create_section_header("5. Explainability Analysis (SHAP - XAI)")
 
         pdf.set_font("helvetica", "", 9)
         pdf.set_text_color(100, 116, 139)
         pdf.multi_cell(
             0, 5,
-            "El análisis SHAP (SHapley Additive exPlanations) cuantifica la contribución individual "
-            "de cada insumo al valor de resistencia predicho. Las barras verdes indican que el insumo "
-            "aumenta la resistencia respecto al valor base del modelo; las barras rojas indican reducción. "
-            "La suma de todas las contribuciones más el valor base es igual a la resistencia estimada.",
+            _limpiar_texto(
+                "The SHAP (SHapley Additive exPlanations) analysis quantifies the individual contribution "
+                "of each ingredient to the predicted compressive strength. Green bars indicate that the "
+                "ingredient increases strength relative to the model base value; red bars indicate reduction. "
+                "The sum of all contributions plus the base value equals the predicted compressive strength."
+            ),
             align="J"
         )
         pdf.ln(4)
         pdf.set_text_color(30, 41, 59)
-
         _insertar_imagen_base64(pdf, datos.shap_graficas_base64)
 
     return bytes(pdf.output())

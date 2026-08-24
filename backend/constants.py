@@ -14,29 +14,29 @@ RANGOS_CONCRETO = [
     {
         "min": 0, 
         "max": 20, 
-        "etiqueta": "Baja Resistencia", 
-        "usos": ["Aceras", "Bordillos", "Muros divisorios", "Pisos simples"]
+        "etiqueta": "Low Strength", 
+        "usos": ["Sidewalks", "Curbs", "Partition Walls", "Simple Flooring"]
         # Mezclas no estructurales o de soporte secundario.
     },
     {
         "min": 20, 
         "max": 40, 
-        "etiqueta": "Resistencia Estándar", 
-        "usos": ["Vigas de vivienda", "Losas", "Columnas ligeras", "Pavimentos"]
+        "etiqueta": "Standard Strength", 
+        "usos": ["Residential Beams", "Slabs", "Light Columns", "Pavements"]
         # Rango típico comercial (aprox. 3000 a 6000 psi).
     },
     {
         "min": 40, 
         "max": 60, 
-        "etiqueta": "Alta Resistencia", 
-        "usos": ["Puentes", "Columnas de edificios altos", "Estructuras industriales", "Muelles"]
+        "etiqueta": "High Strength", 
+        "usos": ["Bridges", "High-Rise Building Columns", "Industrial Structures", "Piers"]
         # Requiere estrictos controles de calidad y aditivos.
     },
     {
         "min": 60, 
         "max": 9999, # Límite superior abierto para cubrir cualquier predicción extrema.
-        "etiqueta": "Ultra Alta Resistencia", 
-        "usos": ["Rascacielos", "Búnkers", "Infraestructura crítica", "Soportes marinos"]
+        "etiqueta": "Ultra-High Strength", 
+        "usos": ["Skyscrapers", "Bunkers", "Critical Infrastructure", "Marine Supports"]
         # Concretos de alto desempeño (UHPC).
     }
 ]
@@ -49,33 +49,33 @@ RANGOS_RELACION_AC = [
     {
         "min": 0.0,
         "max": 0.4,
-        "etiqueta": "Baja",
-        "descripcion": "Alta Resistencia",
+        "etiqueta": "Low",
+        "descripcion": "High Strength",
         "caracteristicas": [
-            "Baja permeabilidad", 
-            "Difícil trabajabilidad"    
+            "Low Permeability", 
+            "Difficult Workability"    
         ]
         # Poca agua libre; requiere plastificantes para ser manejable.
     },
     {
         "min": 0.4,
         "max": 0.6,
-        "etiqueta": "Óptima",
-        "descripcion": "Balance Ideal",
+        "etiqueta": "Optimal",
+        "descripcion": "Ideal Balance",
         "caracteristicas": [
-            "Buena cohesión",        
-            "Durabilidad adecuada"
+            "Good Cohesion",        
+            "Adequate Durability"
         ]
         # Zona estándar recomendada por ACI 211.1 para la mayoría de estructuras.
     },
     {
         "min": 0.6, 
         "max": 9999,
-        "etiqueta": "Alta", 
-        "descripcion": "Baja Durabilidad",
+        "etiqueta": "High", 
+        "descripcion": "Low Durability",
         "caracteristicas": [
-            "Alta porosidad",
-            "Riesgo de segregación"     
+            "High Porosity",
+            "Segregation Risk"     
         ]
         # Exceso de agua capilar que debilita la matriz (Ley de Abrams).
     }
@@ -90,33 +90,33 @@ RANGOS_RELACION_GA = [
     {
         "min": 0.0,
         "max": 1.2,
-        "etiqueta": "Mezcla Fina",
-        "descripcion": "Alta proporción de arena",
+        "etiqueta": "Fine Mixture",
+        "descripcion": "High Sand Proportion",
         "caracteristicas": [
-            "Alta cohesión",          
-            "Mayor demanda de pasta",
+            "High Cohesion",          
+            "Higher Paste Demand",
         ]
         # Zona IV de Shilstone: Mezcla "pegajosa" que exige mucha agua por exceso de área superficial.
     },
     {
         "min": 1.2,
         "max": 2.0,
-        "etiqueta": "Equilibrada",
-        "descripcion": "Granulometría óptima",
+        "etiqueta": "Balanced",
+        "descripcion": "Optimal Gradation",
         "caracteristicas": [
-            "Máxima compacidad",       
-            "Ideal para bombeo"         
+            "Maximum Compactness",       
+            "Ideal for Pumping"         
         ]
         # Zona II de Shilstone: Buen empaquetamiento (cercano a la curva de Fuller).
     },
     {
         "min": 2.0,
         "max": 9999,
-        "etiqueta": "Mezcla Áspera",
-        "descripcion": "Alta proporción de grava",
+        "etiqueta": "Coarse Mixture",
+        "descripcion": "High Gravel Proportion",
         "caracteristicas": [
-            "Difícil de llanear",       
-            "Riesgo de cangrejeras"    
+            "Difficult to Finish (Trowel)",       
+            "Risk of Honeycombing"    
         ]
         # Zona I de Shilstone: Faltan finos para lubricar la mezcla; tendencia a oquedades.
     }
@@ -129,13 +129,13 @@ RANGOS_RELACION_GA = [
 # Evita extrapolaciones ("Garbage In, Garbage Out") restringiendo los inputs 
 # a los valores mínimos y máximos exactos con los que la IA fue entrenada.
 YEH_BOUNDARIES = {
-    "cement": {"min": 71.0, "max": 600.0, "name": "Cemento"},
-    "slag": {"min": 0.0, "max": 359.0, "name": "Escoria"},
-    "flyash": {"min": 0.0, "max": 175.0, "name": "Ceniza Volante"},
-    "water": {"min": 120.0, "max": 228.0, "name": "Agua"},
-    "superplasticizer": {"min": 0.0, "max": 20.8, "name": "Superplastificante"},
-    "coarseaggregate": {"min": 730.0, "max": 1322.0, "name": "Agregado Grueso"},
-    "fineaggregate": {"min": 486.0, "max": 968.0, "name": "Agregado Fino"},
+    "cement": {"min": 71.0, "max": 600.0, "name": "Cement"},
+    "slag": {"min": 0.0, "max": 359.0, "name": "Blast Furnace Slag"},
+    "flyash": {"min": 0.0, "max": 175.0, "name":"Fly Ash"},
+    "water": {"min": 120.0, "max": 228.0, "name": "Water"},
+    "superplasticizer": {"min": 0.0, "max": 20.8, "name": "Superplasticizer"},
+    "coarseaggregate": {"min": 730.0, "max": 1322.0, "name": "Coarse Aggregate"},
+    "fineaggregate": {"min": 486.0, "max": 968.0, "name": "Fine Aggregate"},
 }
 
 # Límites de la relación G/A inferidos del dataset de Yeh:
@@ -170,12 +170,12 @@ LIMITE_EDAD_MAX = 365
 
 # Mapeo de nombres técnicos a nombres profesionales en español
 TRADUCCIONES_MATERIALES = {
-    "cement": {"nombre": "Cemento", "unidad": "kg/m³"},
-    "slag": {"nombre": "Escoria de alto horno", "unidad": "kg/m³"},
-    "flyash": {"nombre": "Ceniza volante", "unidad": "kg/m³"},
-    "water": {"nombre": "Agua", "unidad": "kg/m³"},
-    "superplasticizer": {"nombre": "Superplastificante", "unidad": "kg/m³"},
-    "coarseaggregate": {"nombre": "Agregado Grueso / Grava", "unidad": "kg/m³"},
-    "fineaggregate": {"nombre": "Agregado Fino / Arena", "unidad": "kg/m³"},
-    "age": {"nombre": "Edad (días)", "unidad": "Días"}
+    "cement": {"nombre": "Cement", "unidad": "kg/m³"},
+    "slag": {"nombre": "Blast Furnace Slag", "unidad": "kg/m³"},
+    "flyash": {"nombre": "Fly Ash", "unidad": "kg/m³"},
+    "water": {"nombre": "Water", "unidad": "kg/m³"},
+    "superplasticizer": {"nombre": "Superplasticizer", "unidad": "kg/m³"},
+    "coarseaggregate": {"nombre": "Coarse Aggregate", "unidad": "kg/m³"},
+    "fineaggregate": {"nombre": "Fine Aggregate", "unidad": "kg/m³"},
+    "age": {"nombre": "Age (days)", "unidad": "Days"}
 }

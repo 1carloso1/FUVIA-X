@@ -219,13 +219,13 @@ export function useConcretePrediction() {
     // Nota: Recharts necesita códigos HEX directos en el objeto 'fill', 
     // no lee clases de Tailwind automáticamente.
     const datosBrutos = [
-      { name: 'Cemento', value: Number(form.cement), fill: '#94a3b8' },  // Slate-400
-      { name: 'Escoria', value: Number(form.slag), fill: '#64748b' },   // Slate-500
-      { name: 'Ceniza', value: Number(form.flyash), fill: '#94a3b8' },  // Slate-400
-      { name: 'Agua', value: Number(form.water), fill: '#3b82f6' },     // Blue-500
-      { name: 'Aditivo', value: Number(form.superplasticizer), fill: '#8b5cf6' }, // Violet-500
-      { name: 'Grava', value: Number(form.coarseaggregate), fill: '#451a03' }, // Amber-900
-      { name: 'Arena', value: Number(form.fineaggregate), fill: '#d97706' }    // Amber-600
+      { name: 'Cement', value: Number(form.cement), fill: '#8f8f91' }, // Slate-800
+      { name: 'Slag', value: Number(form.slag), fill: '#64748b' },   // Slate-500
+      { name: 'Fly Ash', value: Number(form.flyash), fill: '#94a3b8' },  // Slate-400
+      { name: 'Water', value: Number(form.water), fill: '#3b82f6' },     // Blue-500
+      { name: 'Superplasticizer', value: Number(form.superplasticizer), fill: '#8b5cf6' }, // Violet-500
+      { name: 'Coarse Aggregate', value: Number(form.coarseaggregate), fill: '#451a03' }, // Amber-900
+      { name: 'Fine Aggregate', value: Number(form.fineaggregate), fill: '#d97706' }    // Amber-600
     ];
 
     return datosBrutos.filter(item => item.value > 0);

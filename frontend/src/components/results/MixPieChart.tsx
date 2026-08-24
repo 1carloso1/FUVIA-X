@@ -51,10 +51,10 @@ export default function MixCompositionCard({ data, age, isPdf = false }: MixComp
       {/* Header */}
       <div className="p-6 pb-4 border-b border-slate-50 flex justify-between items-center">
         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wide">
-          Diseño de Mezcla
+          Mix Composition
         </h3>
         <span className="px-2 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wide text-slate-500 bg-slate-100">
-          Dosificación por Peso
+          Dosage by Weight
         </span>
       </div>
 
@@ -108,7 +108,7 @@ export default function MixCompositionCard({ data, age, isPdf = false }: MixComp
                   className="text-[10px] font-bold fill-slate-400 uppercase tracking-widest"
                   style={{ pointerEvents: 'none' }}
                 >
-                  DÍAS
+                  DAYS
                 </text>
                 
                 {/* Tooltip personalizado */}
@@ -165,7 +165,7 @@ export default function MixCompositionCard({ data, age, isPdf = false }: MixComp
                 ))}
                 {/* Fila Total */}
                 <tr className="bg-slate-50/50">
-                  <td className="px-2 py-3 text-center text-[10px] font-bold text-slate-500 uppercase">Peso Total</td>
+                  <td className="px-2 py-3 text-center text-[10px] font-bold text-slate-500 uppercase">Total Weight</td>
                   <td className="px-2 py-3 text-center text-xs font-extrabold text-slate-800">{totalWeight}</td>
                   <td className="px-2 py-3 text-center text-[10px] font-bold text-slate-500">100%</td>
                 </tr>

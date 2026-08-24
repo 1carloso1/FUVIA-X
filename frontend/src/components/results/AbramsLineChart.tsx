@@ -27,11 +27,11 @@ export default function AbramsCurveCard({ ratio, strength }: AbramsCurveCardProp
       
       <div className="p-6 pb-4 border-b border-slate-50 flex justify-between items-center">
         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wide">
-          Curva de Abrams
+          Abrams Curve
         </h3>
         {/* Badge opcional para mantener el estilo de "etiqueta a la derecha" */}
         <span className="px-2 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wide text-slate-500 bg-slate-100">
-          Proyección - Real vs Teórica 
+          Projection — Actual vs. Theoretical
         </span>
       </div>
 
@@ -105,7 +105,7 @@ export default function AbramsCurveCard({ ratio, strength }: AbramsCurveCardProp
         <div className="mt-4 flex justify-center items-center gap-2 opacity-80 hover:opacity-100 transition-opacity">
           <span className="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-sm" />
           <p className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">
-            Mezcla Actual
+            Current Mixture
           </p>
         </div>
 
