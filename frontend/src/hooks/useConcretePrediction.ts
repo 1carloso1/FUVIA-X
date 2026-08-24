@@ -20,6 +20,7 @@ export function useConcretePrediction() {
 
   const resultsRef = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
+  const shapRef = useRef<HTMLDivElement>(null);
 
   // 2. EFECTOS
     // 2.1 SCROLL:  Cuando 'resultado' cambia y no es null, hacemos scroll suave hacia él.
@@ -189,12 +190,12 @@ export function useConcretePrediction() {
      }
   };
 
-  const confirmPdfGeneration = async (graficasBase64: string, overrideStrength?: string) => {
+  const confirmPdfGeneration = async (graficasBase64: string, overrideStrength?: string, shapGraficasBase64?: string ) => {
     try {
       if (!resultado) return; 
       
       const fuerzaFinal = overrideStrength !== undefined ? overrideStrength : realStrength;
-      const pdfBlob = await generarReporteAPI(form, resultado, fuerzaFinal, graficasBase64);
+      const pdfBlob = await generarReporteAPI(form, resultado, fuerzaFinal, graficasBase64, shapGraficasBase64);
       
       const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
@@ -248,6 +249,7 @@ export function useConcretePrediction() {
     openModal,
     closeModal,
     handleExperimentalChange,
+    shapRef,
     confirmPdfGeneration,
   };
 }

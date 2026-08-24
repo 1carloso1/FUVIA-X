@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import PredictionResultDark from '../results/PredictionResultDark';
 import MixCompositionCardDark from '../results/MixPieChartDark';
 import AbramsCurveCardDark from '../results/AbramsLineChartDark';
+import SHAPContributionCardDark from '../results/SHAPContributionCardDark';
 import SHAPContributionCard from '../results/SHAPContributionCard';
 import MixCompositionCard from '../results/MixPieChart';
 import AbramsCurveCard from '../results/AbramsLineChart';
@@ -29,7 +30,7 @@ export default function MainLayout() {
   // Hook de predicción FUVIA
   const {
     form, resultado, error, loading, isLocked, camposError,
-    resultsRef, pieData, isModalOpen, realStrength, printRef,
+    resultsRef, pieData, isModalOpen, realStrength, printRef, shapRef, 
     handleChange, handleSubmit, handleReset,
     openModal, closeModal, handleExperimentalChange, confirmPdfGeneration,
   } = useConcretePrediction();
@@ -183,7 +184,7 @@ export default function MainLayout() {
                 />
                 {/* Contribuciones SHAP — XAI */}
                 {resultado.shap_contributions?.length > 0 && (
-                  <SHAPContributionCard
+                  <SHAPContributionCardDark
                     shap_base_value={resultado.shap_base_value}
                     shap_contributions={resultado.shap_contributions}
                   />
@@ -242,37 +243,50 @@ export default function MainLayout() {
           try {
             if (!printRef.current) return;
             const canvas = await html2canvas(printRef.current, { scale: 2, windowWidth: 1200, width: 800 });
-            await confirmPdfGeneration(canvas.toDataURL('image/png'));
-          } catch (err) {
-            console.error('Error capturando gráficas:', err);
-          }
+            
+            let shapBase64: string | undefined;
+            if (shapRef.current) {
+              const shapCanvas = await html2canvas(shapRef.current, { scale: 2, windowWidth: 1200, width: 800 });
+              shapBase64 = shapCanvas.toDataURL('image/png');
+            }
+            await confirmPdfGeneration(canvas.toDataURL('image/png'), undefined, shapBase64);
+          } catch (err) { console.error('Error capturando gráficas:', err); }
         }}
         onSkip={async () => {
           try {
             if (!printRef.current) return;
             handleExperimentalChange('0');
             const canvas = await html2canvas(printRef.current, { scale: 2, windowWidth: 1200, width: 800 });
-            await confirmPdfGeneration(canvas.toDataURL('image/png'), '0');
-          } catch (err) {
-            console.error('Error capturando gráficas:', err);
-          }
+            
+            // Capturar SHAP igual que en onConfirm
+            let shapBase64: string | undefined;
+            if (shapRef.current) {
+              const shapCanvas = await html2canvas(shapRef.current, { scale: 2, windowWidth: 1200, width: 800 });
+              shapBase64 = shapCanvas.toDataURL('image/png');
+            }
+            await confirmPdfGeneration(canvas.toDataURL('image/png'), '0', shapBase64);
+          } catch (err) { console.error('Error capturando gráficas:', err); }
         }}
       />
 
       {/* Contenedor oculto para captura PDF */}
       {resultado && (
-        <div ref={printRef} className="absolute -left-[9999px] w-[800px] bg-white">
-          <MixCompositionCard data={pieData} age={Number(form.age)} isPdf={true} />
-          <AbramsCurveCard ratio={resultado.relacion_agua_cemento} strength={resultado.resistencia_estimada} />
-          {/* SHAP en el PDF — usa isPdf para deshabilitar animaciones */}
+        <>
+          {/* Ref 1 — gráficas principales (pie + Abrams) */}
+          <div ref={printRef} className="absolute -left-[9999px] w-[800px] bg-white">
+            <MixCompositionCard data={pieData} age={Number(form.age)} isPdf={true} />
+            <AbramsCurveCard ratio={resultado.relacion_agua_cemento} strength={resultado.resistencia_estimada} />
+          </div>
+          {/* Ref 2 — gráfica SHAP en página separada */}
           {resultado.shap_contributions?.length > 0 && (
-            <SHAPContributionCard
-              shap_base_value={resultado.shap_base_value}
-              shap_contributions={resultado.shap_contributions}
-              isPdf={true}
-            />
+            <div ref={shapRef} className="absolute -left-[9999px] w-[800px] bg-white p-8">
+              <SHAPContributionCard
+                shap_base_value={resultado.shap_base_value}
+                shap_contributions={resultado.shap_contributions}
+              />
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

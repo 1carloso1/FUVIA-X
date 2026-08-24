@@ -30,9 +30,6 @@ export const predecirConcreto = async (formData: ConcreteInputData): Promise<Pre
 
   // --- SI TODO ESTÁ BIEN ---
   return await response.json();
-
-  // --- SI TODO ESTÁ BIEN ---
-  return await response.json();
 };
 
 // --- NUEVA FUNCIÓN PARA EL PDF ---
@@ -40,7 +37,8 @@ export const generarReporteAPI = async (
   formData: ConcreteInputData, 
   resultadoPrediccion: PredictionResponse,
   realStrength: string | number, 
-  graficasBase64: string
+  graficasBase64: string,
+  shapGraficasBase64?:  string          // ← nueva, opcional,
 ): Promise<Blob> => {
   
   const payload = {
@@ -49,6 +47,7 @@ export const generarReporteAPI = async (
     // Si realStrength es un valor válido mayor a 0, lo mandamos como número. Si no, mandamos null.
     resistencia_real: (realStrength && Number(realStrength) > 0) ? Number(realStrength) : null,
     graficas_base64: graficasBase64,
+    shap_graficas_base64: shapGraficasBase64 ?? null,
     version: pkg.version
   };
 

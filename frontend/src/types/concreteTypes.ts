@@ -27,4 +27,6 @@ export interface PredictionResponse {
   clase_ac: string;
   descripcion_ac: string;
   caracteristicas_ac: string[];
+  shap_base_value:       number;
+  shap_contributions:    SHAPContribution[];
 }

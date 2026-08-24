@@ -37,4 +37,5 @@ class ReporteRequest(BaseModel):
     prediccion: ConcretoOutput
     resistencia_real: Optional[float] = None
     graficas_base64: str
+    shap_graficas_base64: Optional[str] = None
     version: str

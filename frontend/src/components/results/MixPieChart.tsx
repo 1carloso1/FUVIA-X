@@ -68,6 +68,7 @@ export default function MixCompositionCard({ data, age, isPdf = false }: MixComp
               <PieChart>
                 <Pie
                   data={data}
+                  isAnimationActive={false}   
                   cx="50%"            // Centrado horizontal
                   cy="50%"            // Centrado vertical
                   innerRadius={60}    // Radio interior (Efecto Donut)
