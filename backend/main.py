@@ -47,25 +47,26 @@ ml_models = {}
 async def lifespan(app: FastAPI):
     # --- Lógica de Arranque (Startup) ---
     create_db_and_tables()
-    ruta_modelo = "models/cb_model.joblib"
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    ruta_modelo = os.path.join(BASE_DIR, "models", "cb_model.joblib")
     if os.path.exists(ruta_modelo):
         model = joblib.load(ruta_modelo)
         ml_models["predictor"] = model
         # Crear el explainer SHAP una sola vez — TreeExplainer es O(ms) por fila
         ml_models["explainer"] = shap.TreeExplainer(model)
-        print(f"Modelo y explainer SHAP cargados correctamente desde {ruta_modelo}.")
+        print(f"Model and SHAP explainer loaded correctly from {ruta_modelo}.")
     else:
-        print(f"ALERTA: No hay modelo en la ruta {ruta_modelo}.")
+        print(f"ALERT: No model on route {ruta_modelo}.")
 
     yield  # Aquí la aplicación se queda corriendo y recibiendo peticiones
 
     # --- Lógica de Apagado (Shutdown) ---
     ml_models.clear()
-    print("Memoria liberada. Modelo y explainer descargados.")
+    print("Freed memory. Model and explainer downloaded.")
 
 
 # Inicializamos FastAPI inyectando el lifespan
-app = FastAPI(title="Sistema de Predicción de Concreto - DB: Yeh", lifespan=lifespan)
+app = FastAPI(title="Predictive Evaluation of Concrete Mix Designs - DB: Yeh", lifespan=lifespan)
 
 # ORÍGENES EXACTOS
 origins = [
@@ -84,35 +85,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 def interpretar_resistencia(mpa: float):
     for rango in RANGOS_CONCRETO:
         if rango["min"] <= mpa < rango["max"]:
             return rango["etiqueta"], rango["usos"]
-    return "Resistencia Desconocida", ["Consultar a un ingeniero estructural"]
-
+    return "Unknown Strength", ["Consult a structural engineer"]
 
 def interpretar_ga(ratio_ga: float):
     for rango in RANGOS_RELACION_GA:
         if rango["min"] <= ratio_ga < rango["max"]:
             return rango["etiqueta"], rango["descripcion"], rango["caracteristicas"]
-    return "Desconocida", "Fuera de rango", ["Sin datos"]
-
+    return "Unknown", "Out of range", ["No data"]
 
 def interpretar_ac(ratio: float):
     for rango in RANGOS_RELACION_AC:
         if rango["min"] <= ratio < rango["max"]:
             return rango["etiqueta"], rango["descripcion"], rango["caracteristicas"]
-    return "Relación Desconocida", "Fuera de rango estándar", ["Consultar a un ingeniero estructural"]
+    return "Unknown Ratio", "Outside standard range", ["Consult a structural engineer"]
 
 
 @app.post("/api/predecir", response_model=ConcretoOutput)
 def predecir_resistencia(datos: ConcretoInput):
-    model    = ml_models.get("predictor")
+    # Extraemos el modelo del diccionario de memoria
+    model = ml_models.get("predictor")
     explainer = ml_models.get("explainer")
-
+    
     if model is None:
-        raise HTTPException(status_code=500, detail="El modelo de IA no está disponible en el servidor.")
+        raise HTTPException(status_code=500, detail="The AI model is not available on the server.")
 
     try:
         # ==========================================================
@@ -128,10 +127,7 @@ def predecir_resistencia(datos: ConcretoInput):
                     detail={
                         "campos": [campo],
                         "mensaje": (
-                            f"Fuera del Dominio de Aplicabilidad: El valor de {limites['name']} "
-                            f"({valor_ingresado} kg/m³) excede las fronteras del modelo de IA "
-                            f"({limites['min']} a {limites['max']} kg/m³). "
-                            f"Riesgo de extrapolación detectado (Ref: I.C. Yeh, 1998)."
+                            f"Outside Applicability Domain: The value of {limites['name']} ({valor_ingresado} kg/m³) exceeds the AI model's boundaries ({limites['min']} to {limites['max']} kg/m³). Extrapolation risk detected (Ref: I.C. Yeh, 1998)."
                         ),
                     },
                 )
@@ -152,73 +148,55 @@ def predecir_resistencia(datos: ConcretoInput):
         # ==========================================================
         # FASE 2: BARRERAS DE SEGURIDAD (NORMATIVAS ACI/ASTM)
         # ==========================================================
+
+                # A) Límite de Edad
         if datos.age < LIMITE_EDAD_MIN or datos.age > LIMITE_EDAD_MAX:
             raise HTTPException(
-                status_code=400,
+                status_code=400, 
                 detail={
                     "campos": ["age"],
-                    "mensaje": (
-                        f"Extrapolación temporal: La edad ingresada es inválida. "
-                        f"El modelo predictivo asintótico se restringe al periodo de "
-                        f"{LIMITE_EDAD_MIN} a {LIMITE_EDAD_MAX} días (Ref: ACI 209R)."
-                    ),
-                },
+                    "mensaje": f"Temporal extrapolation: The entered age is invalid. The asymptotic predictive model is restricted to a period of {LIMITE_EDAD_MIN} to {LIMITE_EDAD_MAX} days (Ref: ACI 209R)."
+                }
             )
 
+        # B) Límite Volumétrico
         if peso_total < LIMITE_VOLUMEN_MIN or peso_total > LIMITE_VOLUMEN_MAX:
             raise HTTPException(
-                status_code=400,
+                status_code=400, 
                 detail={
                     "campos": ["cement", "slag", "flyash", "water", "superplasticizer", "coarseaggregate", "fineaggregate"],
-                    "mensaje": (
-                        f"Inviabilidad física: Un metro cúbico de concreto normal debe pesar entre "
-                        f"{LIMITE_VOLUMEN_MIN} y {LIMITE_VOLUMEN_MAX} kg. Su diseño suma "
-                        f"{round(peso_total, 3)} kg, lo que implica un error de rendimiento "
-                        f"volumétrico (Ref: ACI 318)."
-                    ),
-                },
+                    "mensaje": f"Physical infeasibility: One cubic meter of normal-weight concrete must weigh between {LIMITE_VOLUMEN_MIN} and {LIMITE_VOLUMEN_MAX} kg. Your design totals {round(peso_total, 3)} kg, indicating a volumetric yield error (Ref: ACI 318)."
+                }
             )
 
+        # C) Límite Químico de Agua/Material Cementante
         if ratio_wcm < LIMITE_WCM_MIN or ratio_wcm > LIMITE_WCM_MAX:
             raise HTTPException(
-                status_code=400,
+                status_code=400, 
                 detail={
                     "campos": ["water", "cement", "slag", "flyash"],
-                    "mensaje": (
-                        f"Fuera de dominio químico: La relación Agua/Material-Cementante calculada "
-                        f"({round(ratio_wcm, 3)}) es inválida. La estequiometría exige un mínimo de "
-                        f"{LIMITE_WCM_MIN}, y superar {LIMITE_WCM_MAX} causa segregación severa "
-                        f"(Ref: ACI 211.1)."
-                    ),
-                },
+                    "mensaje": f"Outside chemical domain: The calculated Water/Cementitious-Materials ratio ({round(ratio_wcm, 3)}) is invalid. Stoichiometry requires a minimum of {LIMITE_WCM_MIN}, and exceeding {LIMITE_WCM_MAX} causes severe segregation (Ref: ACI 211.1)."
+                }
             )
 
+        # D) Límite de Aditivo
         if dosis_sp > LIMITE_ADITIVO_MAX:
             raise HTTPException(
-                status_code=400,
+                status_code=400, 
                 detail={
                     "campos": ["superplasticizer", "cement", "slag", "flyash"],
-                    "mensaje": (
-                        f"Sobredosis de aditivo: El superplastificante es el {round(dosis_sp, 3)}% "
-                        f"del peso cementante. Superar el {LIMITE_ADITIVO_MAX}% provoca retardo "
-                        f"crítico de fraguado y exceso de aire atrapado (Ref: ACI 212.3R / ASTM C494)."
-                    ),
-                },
+                    "mensaje": f"Additive overdose: Superplasticizer accounts for {round(dosis_sp, 3)}% of the cementitious weight. Exceeding {LIMITE_ADITIVO_MAX}% causes critical setting retardation and excessive entrapped air (Ref: ACI 212.3R / ASTM C494)."
+                }
             )
 
+        # E) Límites Geométricos de Agregados (Dominio Empírico de la IA)
         if ratio_grava_arena < RATIO_GRAVA_ARENA_MIN or ratio_grava_arena > RATIO_GRAVA_ARENA_MAX:
             raise HTTPException(
-                status_code=400,
+                status_code=400, 
                 detail={
                     "campos": ["coarseaggregate", "fineaggregate"],
-                    "mensaje": (
-                        f"Fuera de dominio algorítmico: La relación Grava/Arena calculada "
-                        f"({round(ratio_grava_arena, 3)}) es inválida. La relación se debe mantener "
-                        f"entre {round(RATIO_GRAVA_ARENA_MIN, 3)} y {round(RATIO_GRAVA_ARENA_MAX, 3)} "
-                        f"para evitar sobresaturación extrema de agregados finos o gruesos "
-                        f"(Ref: I.C. Yeh, 1998)."
-                    ),
-                },
+                    "mensaje": f"Outside algorithmic domain: The calculated Coarse/Fine Aggregate ratio ({round(ratio_grava_arena, 3)}) is invalid. The ratio must remain between {round(RATIO_GRAVA_ARENA_MIN, 3)} and {round(RATIO_GRAVA_ARENA_MAX, 3)} to avoid extreme oversaturation of fine or coarse aggregates (Ref: I.C. Yeh, 1998)."
+                }
             )
 
         # ==========================================================
@@ -327,8 +305,8 @@ async def generar_reporte_endpoint(
         return Response(content=pdf_bytes, media_type="application/pdf")
 
     except Exception as e:
-        print(f"Error generando PDF o guardando DB: {e}")
-        raise HTTPException(status_code=500, detail="Error al generar el documento PDF")
+        print(f"Error Generating PDF or saving DB: {e}")
+        raise HTTPException(status_code=500, detail="Error Generating PDF.")
 
 
 @app.get("/api/health")
