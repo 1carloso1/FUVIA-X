@@ -144,10 +144,6 @@ export default function SHAPContributionCardLight({
             <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">Aumenta f'c</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-1 h-4 rounded-sm" style={{ background: '#ef4444' }} />
-            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">Punto neutro</span>
-          </div>
-          <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm" style={{ background: COLOR_NEGATIVE }} />
             <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">Reduce f'c</span>
           </div>
