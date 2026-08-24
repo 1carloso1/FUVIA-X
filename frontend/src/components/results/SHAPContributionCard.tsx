@@ -37,14 +37,14 @@ const renderLabel = (props: {
 
 // ── Nombres en español ────────────────────────────────────────────────────────
 const SHORT_NAMES: Record<string, string> = {
-  'Cement':             'Cemento',
-  'Blast Furnace Slag': 'Escoria',
-  'Fly Ash':            'Ceniza',
-  'Water':              'Agua',
-  'Superplasticizer':   'Aditivo',
-  'Coarse Aggregate':   'Grava',
-  'Fine Aggregate':     'Arena',
-  'Age':                'Edad',
+  'Cement':             'Cement',
+  'Blast Furnace Slag': 'Slag',
+  'Fly Ash':            'Fly Ash',
+  'Water':              'Water',
+  'Superplasticizer':   'Superplasticizer',
+  'Coarse Aggregate':   'Coarse Aggregate',
+  'Fine Aggregate':     'Fine Aggregate',
+  'Age':                'Age',
 };
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -71,16 +71,16 @@ export default function SHAPContributionCardLight({
       {/* Header — mismo patrón que AbramsLineChart y MixPieChart */}
       <div className="p-6 pb-4 border-b border-slate-50 flex justify-between items-center">
         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wide">
-          Contribución SHAP al f'c
+          SHAP Contribution to f'c
         </h3>
         <span className="px-2 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wide text-slate-500 bg-slate-100">
-          Explicabilidad XAI
+          XAI Explainability
         </span>
       </div>
 
       <div className="px-6 pt-3 pb-1 flex items-center gap-2">
         <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-          Valor base del modelo
+          Model Base Value
         </span>
         <span className="text-[12px] font-bold text-slate-700 ml-auto">
           {shap_base_value.toFixed(2)} MPa
@@ -141,11 +141,11 @@ export default function SHAPContributionCardLight({
         <div className="flex justify-center gap-6 mt-2">
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm" style={{ background: COLOR_POSITIVE }} />
-            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">Aumenta f'c</span>
+            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">Increases f'c</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm" style={{ background: COLOR_NEGATIVE }} />
-            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">Reduce f'c</span>
+            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">Decreases f'c</span>
           </div>
         </div>
       </div>
