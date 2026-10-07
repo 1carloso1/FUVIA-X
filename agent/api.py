@@ -28,6 +28,11 @@ from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
 from dotenv import load_dotenv
 
+
+import hashlib
+import subprocess
+from prompts import PROMPT_VERSION, MODEL_ID
+
 load_dotenv()
 
 logging.basicConfig(
@@ -231,3 +236,35 @@ async def chat(request: ChatRequest):
             status_code=500,
             detail=f"Error interno del agente: {str(e)}"
         )
+
+@app.get("/api/version")
+def version():
+    """Snapshot de versión del sistema para trazabilidad y reproducibilidad."""
+    # Commit actual del repositorio
+    try:
+        app_commit = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=os.path.dirname(__file__),
+            stderr=subprocess.DEVNULL
+        ).decode().strip()
+    except Exception:
+        app_commit = "unknown"
+
+    # Hash del corpus normativo (chroma_db como proxy)
+    try:
+        chroma_path = os.path.join(os.path.dirname(__file__), "rag", "chroma_db")
+        h = hashlib.md5()
+        for root, _, files in os.walk(chroma_path):
+            for f in sorted(files):
+                with open(os.path.join(root, f), "rb") as fh:
+                    h.update(fh.read(4096))  # solo los primeros 4KB por archivo
+        kb_hash = h.hexdigest()[:8]
+    except Exception:
+        kb_hash = "unknown"
+
+    return {
+        "app_commit":     app_commit,
+        "prompt_version": PROMPT_VERSION,
+        "model":          MODEL_ID,
+        "kb_hash":        kb_hash,
+    }

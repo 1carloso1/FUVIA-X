@@ -34,7 +34,7 @@ from typing_extensions import TypedDict
 
 from tools.rag_tool import query_normative_standards, initialize_rag
 from tools.fuvia_tool import fuvia_predict_mix_design
-from prompts import AGENT_SYSTEM_PROMPT, REPORT_SYNTHESIS_PROMPT
+from prompts import AGENT_SYSTEM_PROMPT, REPORT_SYNTHESIS_PROMPT, MODEL_ID
 
 load_dotenv()
 
@@ -71,7 +71,7 @@ def build_llm() -> ChatAnthropic:
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY no encontrada en .env")
     return ChatAnthropic(
-        model="claude-sonnet-4-5",
+        model=MODEL_ID,
         api_key=api_key,
         max_tokens=800
     )

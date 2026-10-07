@@ -3,6 +3,9 @@
 Prompts del sistema para el agente FUVIA.
 Separados del código del agente para facilitar iteración.
 """
+# Versión del prompt — incrementar en cada cambio de comportamiento
+PROMPT_VERSION = "1.0.0"
+MODEL_ID = "claude-sonnet-4-5" 
 
 AGENT_SYSTEM_PROMPT = """You are FUVIA X Copilot, a concise technical agent for concrete mix design and ACI/ASTM normative compliance.
 
