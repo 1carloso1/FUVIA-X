@@ -30,6 +30,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
 from dotenv import load_dotenv
+from citation_check import check_citations
 
 
 import hashlib
@@ -234,6 +235,17 @@ async def chat(request: ChatRequest):
         # Registro con consentimiento; un fallo aquí nunca rompe la respuesta
         if request.log_consent:
             try:
+                rag_chunks = [
+                    c for r in result.get("tool_runs", [])
+                    if r.get("tool") == "query_normative_standards"
+                    for c in r.get("chunks", [])
+                ]
+                try:
+                    citation_check = check_citations(response_text, rag_chunks, request.message)
+                    logger.info(f"Verificación de citas: {citation_check['summary']}")
+                except Exception as cc_err:
+                    citation_check = {"error": f"{type(cc_err).__name__}: {cc_err}"}
+
                 write_turn(build_turn_record(
                     session_id=request.session_id,
                     turn=sum(1 for m in request.history if m.role == "user") + 1,
@@ -245,6 +257,7 @@ async def chat(request: ChatRequest):
                     report_parse_error=report_parse_error,
                     latency_ms_total=int((time.perf_counter() - t_start) * 1000),
                     versions=_get_versions(),
+                    citation_check=citation_check,
                 ))
             except Exception as log_err:
                 logger.warning(f"No se pudo escribir el registro del turno: {log_err}")
