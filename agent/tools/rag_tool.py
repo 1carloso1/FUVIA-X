@@ -9,6 +9,7 @@ El agente llama esta función cuando necesita consultar el stack normativo.
 
 import sys
 import os
+import time
 
 # Agregar el directorio raíz al path para importar desde rag/
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -25,7 +26,7 @@ def initialize_rag():
     setup_settings()
 
 
-@tool
+@tool(response_format="content_and_artifact")
 def query_normative_standards(question: str) -> str:
     """
     Consulta el stack normativo ACI/ASTM para obtener requisitos,
@@ -44,28 +45,42 @@ def query_normative_standards(question: str) -> str:
     Returns:
         Respuesta normativa con citación de fuentes (estándar y cláusula)
     """
+    t0, result, error = time.perf_counter(), None, None
     try:
-        # run_query imprime a consola — capturamos el resultado
-        # redirigiendo stdout temporalmente
         import io
         from contextlib import redirect_stdout
 
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run_query(question)
+            result = run_query(question)          # CAMBIO: se conserva el retorno
 
         output = buffer.getvalue()
 
-        # Extraer solo la respuesta normativa del output
-        # (omitir logs de ChromaDB y metadata de fuentes)
+        # content: misma lógica de v1.0, sin tocar
         if "RESPUESTA NORMATIVA:" in output:
-            start   = output.find("RESPUESTA NORMATIVA:") + len("RESPUESTA NORMATIVA:")
-            end     = output.find("─" * 20)
-            if end > start:
-                return output[start:end].strip()
-            return output[start:].strip()
-
-        return output.strip()
+            start = output.find("RESPUESTA NORMATIVA:") + len("RESPUESTA NORMATIVA:")
+            end   = output.find("─" * 20)
+            content = output[start:end].strip() if end > start else output[start:].strip()
+        else:
+            content = output.strip()
 
     except Exception as e:
-        return f"Error consultando el stack normativo: {str(e)}"
+        error   = f"{type(e).__name__}: {e}"
+        content = f"Error consultando el stack normativo: {str(e)}"
+
+    if result is None and error is None:
+        error = "no_result"                       # p. ej. colección no encontrada
+    r = result or {}
+
+    artifact = {
+        "tool":             "query_normative_standards",
+        "args":             {"question": question},
+        "latency_ms":       int((time.perf_counter() - t0) * 1000),
+        "lang_detected":    r.get("lang_detected"),
+        "was_translated":   r.get("was_translated"),
+        "translated_query": r.get("translated_query"),
+        "llm_model":        r.get("llm_model"),
+        "chunks":           r.get("chunks", []),
+        "error":            error,
+    }
+    return content, artifact

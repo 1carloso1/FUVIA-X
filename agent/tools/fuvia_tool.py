@@ -22,7 +22,7 @@ en mensajes claros para que el agente los comunique al usuario.
 """
 
 import os
-
+import time
 import httpx
 from langchain_core.tools import tool
 
@@ -30,7 +30,7 @@ FUVIA_API_URL = os.getenv("FUVIA_API_URL", "https://firmitas-ai.onrender.com/api
 TIMEOUT_SECONDS = 45  # Render puede tener cold start de hasta 30s
 
 
-@tool
+@tool(response_format="content_and_artifact")
 def fuvia_predict_mix_design(
     cement: float,
     slag: float,
@@ -40,7 +40,7 @@ def fuvia_predict_mix_design(
     coarseaggregate: float,
     fineaggregate: float,
     age: int
-) -> str:
+) -> tuple[str, dict]:
     """
     Predice la resistencia a compresión (f'c) de una dosificación de concreto
     usando el modelo CatBoost de FUVIA, entrenado con el dataset Yeh 1998.
@@ -69,52 +69,61 @@ def fuvia_predict_mix_design(
         el mensaje de error específico del firewall paramétrico.
     """
     payload = {
-        "cement":           cement,
-        "slag":             slag,
-        "flyash":           flyash,
-        "water":            water,
-        "superplasticizer": superplasticizer,
-        "coarseaggregate":  coarseaggregate,
-        "fineaggregate":    fineaggregate,
-        "age":              age
+        "cement": cement, "slag": slag, "flyash": flyash, "water": water,
+        "superplasticizer": superplasticizer, "coarseaggregate": coarseaggregate,
+        "fineaggregate": fineaggregate, "age": age,
+    }
+    t0 = time.perf_counter()
+    artifact = {
+        "tool": "fuvia_predict_mix_design", "args": payload, "status": None,
+        "response": None, "firewall_blocked": False, "firewall_message": None,
+        "firewall_fields": [], "latency_ms": None, "error": None,
     }
 
     try:
-        response = httpx.post(
-            FUVIA_API_URL,
-            json=payload,
-            timeout=TIMEOUT_SECONDS
-        )
+        response = httpx.post(FUVIA_API_URL, json=payload, timeout=TIMEOUT_SECONDS)
+        artifact["status"] = response.status_code
 
-        # Manejar errores del firewall paramétrico (HTTP 400)
         if response.status_code == 400:
             error_detail = response.json().get("detail", {})
+            artifact["firewall_blocked"] = True
             if isinstance(error_detail, dict):
                 campos  = error_detail.get("campos", [])
                 mensaje = error_detail.get("mensaje", "Dosificación inválida")
+                artifact["firewall_fields"]  = campos
+                artifact["firewall_message"] = mensaje
                 campos_str = ", ".join(campos) if campos else "parámetros"
-                return (
+                content = (
                     f"FUVIA FIREWALL — Dosificación rechazada\n"
                     f"Campo(s) problemático(s): {campos_str}\n"
                     f"Razón: {mensaje}\n\n"
                     f"El agente debe informar al usuario qué parámetro ajustar."
                 )
-            return f"FUVIA FIREWALL — {error_detail}"
-
-        response.raise_for_status()
-        data = response.json()
-        return _format_fuvia_response(payload, data)
+            else:
+                artifact["firewall_message"] = str(error_detail)
+                content = f"FUVIA FIREWALL — {error_detail}"
+        else:
+            response.raise_for_status()
+            data = response.json()
+            artifact["response"] = data           # respuesta cruda, con SHAP
+            content = _format_fuvia_response(payload, data)
 
     except httpx.TimeoutException:
-        return (
+        artifact["error"] = "timeout"
+        content = (
             "FUVIA TIMEOUT — El servidor tardó más de 45 segundos en responder. "
             "Render puede estar iniciando desde cold start. "
             "Sugiere al usuario intentar de nuevo en 30 segundos."
         )
     except httpx.HTTPStatusError as e:
-        return f"FUVIA ERROR {e.response.status_code} — {e.response.text[:200]}"
+        artifact["error"] = f"http_{e.response.status_code}"
+        content = f"FUVIA ERROR {e.response.status_code} — {e.response.text[:200]}"
     except Exception as e:
-        return f"FUVIA ERROR inesperado — {str(e)}"
+        artifact["error"] = f"{type(e).__name__}: {e}"
+        content = f"FUVIA ERROR inesperado — {str(e)}"
+
+    artifact["latency_ms"] = int((time.perf_counter() - t0) * 1000)
+    return content, artifact
 
 
 def _format_fuvia_response(inputs: dict, output: dict) -> str:

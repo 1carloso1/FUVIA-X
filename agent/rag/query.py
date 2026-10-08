@@ -121,10 +121,16 @@ class HybridRetriever(BaseRetriever):
         self.vector_retriever = vector_retriever
         self.bm25_retriever = bm25_retriever
         super().__init__()
+        self.last_vector_ids: set = set()   # NUEVO
+        self.last_bm25_ids: set = set()     # NUEVO
 
     def _retrieve(self, query_bundle):
         vector_nodes = self.vector_retriever.retrieve(query_bundle)
         bm25_nodes = self.bm25_retriever.retrieve(query_bundle)
+
+        # NUEVO: origen de cada chunk, para el registro (W1)
+        self.last_vector_ids = {n.node.node_id for n in vector_nodes}
+        self.last_bm25_ids   = {n.node.node_id for n in bm25_nodes}
 
         # Deduplicar por node_id — un chunk no debe aparecer dos veces
         seen = {}
@@ -167,8 +173,21 @@ def format_source(node, index: int) -> str:
         f"      Preview  : {text_preview}\n"
     )
 
+def chunk_to_dict(node, origin: str) -> dict:
+    """Chunk completo (no el preview de 400 caracteres) para el registro."""
+    meta = node.node.metadata or {}
+    return {
+        "doc":       meta.get("standard", "Unknown standard"),
+        "chapters":  meta.get("chapters_indexed", "N/A"),
+        "page":      meta.get("page"),
+        "source_id": meta.get("source_id"),
+        "retriever": origin,                      # "vector" | "bm25" | "both"
+        "score":     float(node.score) if node.score is not None else None,
+        "text":      node.node.text,
+    }
 
-def run_query(original_query: str):
+
+def run_query(original_query: str) -> dict | None:
     logger.info("Conectando a ChromaDB...")
     db = chromadb.PersistentClient(path=CHROMA_DB_DIR)
 
@@ -243,6 +262,23 @@ def run_query(original_query: str):
 
     for i, node in enumerate(response.source_nodes, start=1):
         print(format_source(node, i))
+
+    # NUEVO
+    def _origin(nid: str) -> str:
+        in_v = nid in hybrid_retriever.last_vector_ids
+        in_b = nid in hybrid_retriever.last_bm25_ids
+        return "both" if (in_v and in_b) else ("vector" if in_v else "bm25")
+
+    return {
+        "answer":           str(response),
+        "chunks":           [chunk_to_dict(n, _origin(n.node.node_id))
+                             for n in response.source_nodes],
+        # "es" = cualquier idioma distinto de inglés (así lo decide el detector)
+        "lang_detected":    "es" if was_translated else "en",
+        "was_translated":   was_translated,
+        "translated_query": retrieval_query if was_translated else None,
+        "llm_model":        getattr(Settings.llm, "model", None),
+    }
 
 
 if __name__ == "__main__":
