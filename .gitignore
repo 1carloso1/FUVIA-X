@@ -45,6 +45,7 @@ models/
 # BASE DE DATOS VECTORIAL — se re-genera con ingest.py
 # ----------------------------------------------------------------
 agent/rag/chroma_db/
+agent/logs/
 
 # ----------------------------------------------------------------
 # DATOS NORMATIVOS — PDFs originales (copyright)

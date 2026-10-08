@@ -19,6 +19,9 @@ import os
 import re
 import json
 import logging
+import time
+from functools import lru_cache
+from turn_log import build_turn_record, write_turn
 from typing import Optional
 from contextlib import asynccontextmanager
 
@@ -58,6 +61,8 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message:  str
     history:  list[ChatMessage] = []
+    session_id:  Optional[str] = None   # NUEVO: UUID anónimo generado en el frontend
+    log_consent: bool = False           # NUEVO: sin consentimiento no se escribe nada
 
 
 class ChatResponse(BaseModel):
@@ -198,6 +203,8 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=503, detail="Agente inicializando, intenta en unos segundos.")
 
     try:
+        t_start = time.perf_counter()
+
         # Reconstruir historial completo
         history_messages  = history_to_langchain(request.history)
         current_message   = HumanMessage(content=request.message)
@@ -210,7 +217,8 @@ async def chat(request: ChatRequest):
             "messages":           full_conversation,
             "normative_response": "",
             "fuvia_response":     "",
-            "final_report":       {}
+            "final_report":       {},
+            "tool_runs":          [],
         })
 
         # Extraer respuesta final
@@ -218,9 +226,28 @@ async def chat(request: ChatRequest):
         tools_called  = extract_tools_called(result["messages"])
         final_report  = result.get("final_report", {})
 
+        report_parse_error = bool(final_report and "error" in final_report)
         # Limpiar report vacío
         if final_report and "error" in final_report:
             final_report = None
+
+        # Registro con consentimiento; un fallo aquí nunca rompe la respuesta
+        if request.log_consent:
+            try:
+                write_turn(build_turn_record(
+                    session_id=request.session_id,
+                    turn=sum(1 for m in request.history if m.role == "user") + 1,
+                    user_message=request.message,
+                    history_len=len(history_messages),
+                    tool_runs=result.get("tool_runs", []),
+                    final_response=response_text,
+                    report=final_report if final_report else None,
+                    report_parse_error=report_parse_error,
+                    latency_ms_total=int((time.perf_counter() - t_start) * 1000),
+                    versions=_get_versions(),
+                ))
+            except Exception as log_err:
+                logger.warning(f"No se pudo escribir el registro del turno: {log_err}")
 
         logger.info(f"Respuesta generada — tools: {tools_called}")
 
@@ -231,15 +258,15 @@ async def chat(request: ChatRequest):
         )
 
     except Exception as e:
-        logger.error(f"Error en el agente: {e}")
+        logger.exception("Error en el agente")      # antes: logger.error(f"Error en el agente: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Error interno del agente: {str(e)}"
         )
 
-@app.get("/api/version")
-def version():
-    """Snapshot de versión del sistema para trazabilidad y reproducibilidad."""
+
+@lru_cache(maxsize=1)
+def _get_versions() -> dict:
     # Commit actual del repositorio
     try:
         app_commit = subprocess.check_output(
@@ -268,3 +295,8 @@ def version():
         "model":          MODEL_ID,
         "kb_hash":        kb_hash,
     }
+
+@app.get("/api/version")
+def version():
+    """Snapshot de versión del sistema para trazabilidad y reproducibilidad."""
+    return _get_versions()

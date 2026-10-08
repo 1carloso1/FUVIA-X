@@ -82,5 +82,6 @@ def query_normative_standards(question: str) -> str:
         "llm_model":        r.get("llm_model"),
         "chunks":           r.get("chunks", []),
         "error":            error,
+        "timings_ms": r.get("timings_ms"),
     }
     return content, artifact

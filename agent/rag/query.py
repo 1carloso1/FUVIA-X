@@ -1,6 +1,7 @@
 import os
 import logging
 import chromadb
+import time
 from dotenv import load_dotenv
 
 from llama_index.core import VectorStoreIndex, Settings
@@ -198,11 +199,14 @@ def run_query(original_query: str) -> dict | None:
             f"Coleccion '{COLLECTION_NAME}' no encontrada. "
             "Ejecuta ingest.py primero."
         )
-        return
+        return None
 
     # Traducir la query al inglés si es necesario — ANTES del retrieval
+    t0 = time.perf_counter()                                              # NUEVO
     retrieval_query, was_translated = translate_to_english(original_query)
+    translate_ms = int((time.perf_counter() - t0) * 1000)                 # NUEVO
 
+    t0 = time.perf_counter()                                              # NUEVO
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
 
     # Retriever semántico — top 3 por similitud conceptual
@@ -236,6 +240,7 @@ def run_query(original_query: str) -> dict | None:
         llm=Settings.llm,
         text_qa_template=NORMATIVE_QA_PROMPT
     )
+    setup_ms = int((time.perf_counter() - t0) * 1000)                     # NUEVO
 
     print(f"\n{'─'*60}")
     print(f"  PREGUNTA ORIGINAL : {original_query}")
@@ -251,7 +256,9 @@ def run_query(original_query: str) -> dict | None:
         custom_embedding_strs=[retrieval_query]  # El retrieval usa la versión en inglés
     )
 
+    t0 = time.perf_counter()                                              # NUEVO
     response = query_engine.query(query_bundle)
+    query_ms = int((time.perf_counter() - t0) * 1000)                     # NUEVO
 
     print("RESPUESTA NORMATIVA:")
     print(f"{response}\n")
@@ -263,12 +270,13 @@ def run_query(original_query: str) -> dict | None:
     for i, node in enumerate(response.source_nodes, start=1):
         print(format_source(node, i))
 
-    # NUEVO
+    # NUEVO (Parte 2): qué retriever aportó cada chunk
     def _origin(nid: str) -> str:
         in_v = nid in hybrid_retriever.last_vector_ids
         in_b = nid in hybrid_retriever.last_bm25_ids
         return "both" if (in_v and in_b) else ("vector" if in_v else "bm25")
 
+    # NUEVO (Partes 2 y 3): resultado estructurado
     return {
         "answer":           str(response),
         "chunks":           [chunk_to_dict(n, _origin(n.node.node_id))
@@ -278,8 +286,12 @@ def run_query(original_query: str) -> dict | None:
         "was_translated":   was_translated,
         "translated_query": retrieval_query if was_translated else None,
         "llm_model":        getattr(Settings.llm, "model", None),
+        "timings_ms": {
+            "translate":               translate_ms,
+            "setup_retrievers":        setup_ms,
+            "retrieve_and_synthesize": query_ms,
+        },
     }
-
 
 if __name__ == "__main__":
     if not validate_environment():

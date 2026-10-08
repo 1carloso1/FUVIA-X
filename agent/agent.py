@@ -23,11 +23,12 @@ import os
 import re
 import json
 import logging
+import operator 
 from typing import Annotated
 from dotenv import load_dotenv
 
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
@@ -60,6 +61,7 @@ class AgentState(TypedDict):
     normative_response: str
     fuvia_response:     str
     final_report:       dict
+    tool_runs:          Annotated[list, operator.add]   # NUEVO: un artifact por llamada
 
 
 # ----------------------------------------------------------------
@@ -131,23 +133,31 @@ def node_rag_tool(state: AgentState) -> AgentState:
 
     last_message       = state["messages"][-1]
     tool_results       = []
+    tool_runs          = []                                   # NUEVO
     normative_response = state.get("normative_response", "")
     fuvia_response     = state.get("fuvia_response", "")
 
     for tool_call in last_message.tool_calls:
         logger.info(f"Ejecutando herramienta: {tool_call['name']}")
+        full_call = {**tool_call, "type": "tool_call"}        # NUEVO: devuelve ToolMessage con artifact
 
         if tool_call["name"] == "query_normative_standards":
-            result             = query_normative_standards.invoke(tool_call["args"])
+            tm                 = query_normative_standards.invoke(full_call)   # CAMBIO
+            result             = tm.content
             normative_response = result
+            if tm.artifact:
+                tool_runs.append(tm.artifact)                 # NUEVO
             tool_results.append(
-                ToolMessage(content=result, tool_call_id=tool_call["id"])
+                ToolMessage(content=result, tool_call_id=tool_call["id"])   # igual que antes
             )
 
         elif tool_call["name"] == "fuvia_predict_mix_design":
             logger.info("Llamando endpoint FUVIA en Render...")
-            result         = fuvia_predict_mix_design.invoke(tool_call["args"])
+            tm             = fuvia_predict_mix_design.invoke(full_call)        # CAMBIO
+            result         = tm.content
             fuvia_response = result
+            if tm.artifact:
+                tool_runs.append(tm.artifact)                 # NUEVO
             tool_results.append(
                 ToolMessage(content=result, tool_call_id=tool_call["id"])
             )
@@ -155,7 +165,8 @@ def node_rag_tool(state: AgentState) -> AgentState:
     return {
         "messages":           tool_results,
         "normative_response": normative_response,
-        "fuvia_response":     fuvia_response
+        "fuvia_response":     fuvia_response,
+        "tool_runs":          tool_runs,                      # NUEVO
     }
 
 
