@@ -36,6 +36,7 @@ from citation_check import check_citations
 import hashlib
 import subprocess
 from prompts import PROMPT_VERSION, MODEL_ID
+from rag.query import RAG_MODEL_ID
 
 load_dotenv()
 
@@ -308,6 +309,7 @@ def _get_versions() -> dict:
         "app_commit":     app_commit,
         "prompt_version": PROMPT_VERSION,
         "model":          MODEL_ID,
+        "rag_model":      RAG_MODEL_ID,
         "kb_hash":        kb_hash,
     }
 

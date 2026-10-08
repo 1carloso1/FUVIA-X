@@ -23,6 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 CHROMA_DB_DIR = os.path.join(os.path.dirname(__file__), "chroma_db")
+RAG_MODEL_ID = "claude-sonnet-4-6"
 COLLECTION_NAME = "aci_astm_standards"
 
 # --- PROMPT DE SISTEMA ---
@@ -71,7 +72,7 @@ def validate_environment() -> bool:
 def setup_settings():
     Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
     Settings.llm = Anthropic(
-        model="claude-sonnet-4-6",
+        model=RAG_MODEL_ID,
         api_key=os.getenv("ANTHROPIC_API_KEY")
     )
 
