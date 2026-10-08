@@ -216,8 +216,8 @@ async def chat(request: ChatRequest):
         # Invocar el agente
         result = agent_instance.invoke({
             "messages":           full_conversation,
-            "normative_response": "",
-            "fuvia_response":     "",
+            "normative_response": [],       # CAMBIO: antes ""
+            "fuvia_response":     [],       # CAMBIO: antes ""
             "final_report":       {},
             "tool_runs":          [],
         })
@@ -228,6 +228,7 @@ async def chat(request: ChatRequest):
         final_report  = result.get("final_report", {})
 
         report_parse_error = bool(final_report and "error" in final_report)
+        report_error = final_report.get("error_detail") if report_parse_error else None   # NUEVO
         # Limpiar report vacío
         if final_report and "error" in final_report:
             final_report = None
@@ -255,6 +256,7 @@ async def chat(request: ChatRequest):
                     final_response=response_text,
                     report=final_report if final_report else None,
                     report_parse_error=report_parse_error,
+                    report_error=report_error,
                     latency_ms_total=int((time.perf_counter() - t_start) * 1000),
                     versions=_get_versions(),
                     citation_check=citation_check,

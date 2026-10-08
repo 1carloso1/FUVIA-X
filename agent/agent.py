@@ -53,33 +53,75 @@ logger = logging.getLogger(__name__)
 class AgentState(TypedDict):
     """
     Estado del grafo LangGraph.
-    messages: historial completo de la conversación (acumulativo)
-    normative_response: última respuesta del RAG (para el sintetizador)
-    final_report: JSON estructurado para el frontend React
+    messages:           historial completo de la conversación (acumulativo)
+    normative_response: una entrada por llamada al RAG en este turno
+    fuvia_response:     una entrada por llamada a FUVIA en este turno
+    final_report:       JSON estructurado para el frontend React
+    tool_runs:          un artifact por llamada a herramienta
     """
     messages:           Annotated[list, add_messages]
-    normative_response: str
-    fuvia_response:     str
+    normative_response: Annotated[list, operator.add]   # CAMBIO: antes str
+    fuvia_response:     Annotated[list, operator.add]   # CAMBIO: antes str
     final_report:       dict
-    tool_runs:          Annotated[list, operator.add]   # NUEVO: un artifact por llamada
+    tool_runs:          Annotated[list, operator.add]
 
 
 # ----------------------------------------------------------------
 # INICIALIZACIÓN DEL LLM Y HERRAMIENTAS
 # ----------------------------------------------------------------
 
-def build_llm() -> ChatAnthropic:
+REPORT_MAX_TOKENS = 1500   # presupuesto de la llamada que genera el reporte JSON (D5)
+
+
+def build_llm(max_tokens: int = 800) -> ChatAnthropic:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY no encontrada en .env")
     return ChatAnthropic(
         model=MODEL_ID,
         api_key=api_key,
-        max_tokens=800
+        max_tokens=max_tokens          # CAMBIO: parámetro; el valor por defecto sigue siendo 800
     )
 
 
 TOOLS = [query_normative_standards, fuvia_predict_mix_design]
+
+def _join_calls(items: list, label: str) -> str:
+    """Una sola llamada: el texto tal cual. Varias: bloques '[Mix 1]', '[Mix 2]'..."""
+    if len(items) <= 1:
+        return items[0] if items else ""
+    return "\n\n".join(f"[{label} {i}]\n{t}" for i, t in enumerate(items, 1))
+
+
+def _fc_injection(tool_runs: list) -> str:
+    """Restricción de f'c exacto, una entrada por mezcla calculada en este turno."""
+    runs = [r for r in tool_runs
+            if r.get("tool") == "fuvia_predict_mix_design"
+            and isinstance(r.get("response"), dict)
+            and r["response"].get("resistencia_estimada") is not None]
+    if not runs:
+        return ""
+    if len(runs) == 1:      # mismo texto que la versión anterior
+        fc_exact = runs[0]["response"]["resistencia_estimada"]
+        return (
+            f"\n\nCRITICAL: The FUVIA model predicted exactly {fc_exact} MPa. "
+            f"You MUST use this exact value when mentioning f'c in your response. "
+            f"Do not round, recalculate, or use any other value."
+        )
+    lines = []
+    for i, r in enumerate(runs, 1):
+        a, resp = r.get("args", {}), r["response"]
+        lines.append(
+            f"- Mix {i} (cement={a.get('cement')}, water={a.get('water')}, "
+            f"age={a.get('age')} d, w/cm={resp.get('relacion_agua_cemento')}): "
+            f"{resp['resistencia_estimada']} MPa"
+        )
+    return (
+        "\n\nCRITICAL: The FUVIA model predicted exactly these values, one per mix:\n"
+        + "\n".join(lines)
+        + "\nYou MUST use these exact values when mentioning f'c, each with its own mix. "
+          "Do not round, recalculate, or swap values between mixes."
+    )
 
 
 # ----------------------------------------------------------------
@@ -123,41 +165,36 @@ def node_rag_tool(state: AgentState) -> AgentState:
     """
     Nodo 2 — Ejecutor de herramientas.
 
-    Ejecuta las herramientas que el clasificador decidió llamar.
-    Phase 2 Semana 2: query_normative_standards + fuvia_predict_mix_design.
-
-    El agente puede llamar una o ambas herramientas en la misma consulta
-    dependiendo de lo que el clasificador decidió.
+    Ejecuta las herramientas que el clasificador decidió llamar. Devuelve solo
+    las entradas NUEVAS de esta ejecución: el reducer del estado las acumula.
     """
-    from langchain_core.messages import ToolMessage
-
     last_message       = state["messages"][-1]
     tool_results       = []
-    tool_runs          = []                                   # NUEVO
-    normative_response = state.get("normative_response", "")
-    fuvia_response     = state.get("fuvia_response", "")
+    tool_runs          = []
+    normative_response = []       # CAMBIO: una entrada por llamada
+    fuvia_response     = []       # CAMBIO
 
     for tool_call in last_message.tool_calls:
         logger.info(f"Ejecutando herramienta: {tool_call['name']}")
-        full_call = {**tool_call, "type": "tool_call"}        # NUEVO: devuelve ToolMessage con artifact
+        full_call = {**tool_call, "type": "tool_call"}
 
         if tool_call["name"] == "query_normative_standards":
-            tm                 = query_normative_standards.invoke(full_call)   # CAMBIO
-            result             = tm.content
-            normative_response = result
+            tm     = query_normative_standards.invoke(full_call)
+            result = tm.content
+            normative_response.append(result)                 # CAMBIO
             if tm.artifact:
-                tool_runs.append(tm.artifact)                 # NUEVO
+                tool_runs.append(tm.artifact)
             tool_results.append(
-                ToolMessage(content=result, tool_call_id=tool_call["id"])   # igual que antes
+                ToolMessage(content=result, tool_call_id=tool_call["id"])
             )
 
         elif tool_call["name"] == "fuvia_predict_mix_design":
             logger.info("Llamando endpoint FUVIA en Render...")
-            tm             = fuvia_predict_mix_design.invoke(full_call)        # CAMBIO
-            result         = tm.content
-            fuvia_response = result
+            tm     = fuvia_predict_mix_design.invoke(full_call)
+            result = tm.content
+            fuvia_response.append(result)                     # CAMBIO
             if tm.artifact:
-                tool_runs.append(tm.artifact)                 # NUEVO
+                tool_runs.append(tm.artifact)
             tool_results.append(
                 ToolMessage(content=result, tool_call_id=tool_call["id"])
             )
@@ -166,7 +203,7 @@ def node_rag_tool(state: AgentState) -> AgentState:
         "messages":           tool_results,
         "normative_response": normative_response,
         "fuvia_response":     fuvia_response,
-        "tool_runs":          tool_runs,                      # NUEVO
+        "tool_runs":          tool_runs,
     }
 
 
@@ -178,14 +215,11 @@ def node_synthesizer(state: AgentState) -> AgentState:
     1. Mensaje conversacional para el historial (en el idioma del usuario)
     2. JSON estructurado para el frontend React (solo si hubo herramientas)
 
-    OPTIMIZACIÓN: Si el clasificador ya generó una respuesta directa
-    (sin tool calls), reutiliza ese contenido sin llamar al LLM de nuevo.
-    Esto resuelve el problema de respuestas vacías [] en consultas sin herramientas.
+    Si el clasificador ya respondió directamente (sin tool calls), reutiliza
+    ese contenido sin llamar al LLM de nuevo.
     """
     llm = build_llm()
 
-    # Detectar si el último mensaje ya tiene contenido del clasificador
-    # (respuesta directa sin tool calls — saludo, pregunta ambigua, fuera de scope)
     last_msg           = state["messages"][-1]
     has_direct_content = (
         isinstance(last_msg, AIMessage)
@@ -194,33 +228,17 @@ def node_synthesizer(state: AgentState) -> AgentState:
     )
 
     if has_direct_content and not state.get("normative_response") and not state.get("fuvia_response"):
-        # El clasificador ya respondió directamente — usar ese contenido sin re-invocar
         logger.info("Respuesta directa del clasificador — sin re-invocar LLM")
         return {
             "messages":     [last_msg],
             "final_report": {}
         }
 
-    # Si hay respuesta de FUVIA, extraer el f'c exacto y agregarlo
-    # al system prompt para evitar que Claude use su propio calculo
-    fuvia_resp   = state.get("fuvia_response", "")
-    fc_injection = ""
-    if fuvia_resp:
-        fc_match = re.search(r"\[FUVIA_FC\][^\d]*([\d\.]+)\s*MPa", fuvia_resp)
-        if fc_match:
-            fc_exact = fc_match.group(1)
-            fc_injection = (
-                f"\n\nCRITICAL: The FUVIA model predicted exactly {fc_exact} MPa. "
-                f"You MUST use this exact value when mentioning f\'c in your response. "
-                f"Do not round, recalculate, or use any other value."
-            )
-
-    # Generar respuesta conversacional final (cuando hubo herramientas)
-    system_with_fc = AGENT_SYSTEM_PROMPT + fc_injection
+    # f'c exacto de CADA mezcla calculada en este turno (tomado de los artifacts)
+    system_with_fc = AGENT_SYSTEM_PROMPT + _fc_injection(state.get("tool_runs", []))
     messages       = [SystemMessage(content=system_with_fc)] + state["messages"]
     final_message  = llm.invoke(messages)
 
-    # Generar JSON estructurado si hubo cualquier herramienta (normativa o FUVIA)
     final_report = {}
     if state.get("normative_response") or state.get("fuvia_response"):
         last_user_msg = next(
@@ -229,17 +247,17 @@ def node_synthesizer(state: AgentState) -> AgentState:
             ""
         )
 
-        fuvia_resp = state.get("fuvia_response", "")
         synthesis_prompt = REPORT_SYNTHESIS_PROMPT.format(
             query=last_user_msg,
-            normative_response=state["normative_response"],
-            fuvia_response=fuvia_resp
+            normative_response=_join_calls(state.get("normative_response", []), "Query"),
+            fuvia_response=_join_calls(state.get("fuvia_response", []), "Mix"),
         )
 
-        json_response = llm.invoke([HumanMessage(content=synthesis_prompt)])
+        report_llm    = build_llm(max_tokens=REPORT_MAX_TOKENS)
+        json_response = report_llm.invoke([HumanMessage(content=synthesis_prompt)])
+        stop_reason   = (getattr(json_response, "response_metadata", None) or {}).get("stop_reason")
 
         try:
-            # Limpiar posibles backticks de markdown
             json_text = json_response.content
             if "```json" in json_text:
                 json_text = json_text.split("```json")[1].split("```")[0]
@@ -249,14 +267,21 @@ def node_synthesizer(state: AgentState) -> AgentState:
             final_report = json.loads(json_text.strip())
             logger.info("JSON estructurado generado correctamente")
         except json.JSONDecodeError as e:
-            logger.warning(f"Error parseando JSON del reporte: {e}")
-            final_report = {"error": "No se pudo generar el reporte estructurado"}
+            logger.warning(f"Error parseando JSON del reporte: {e} (stop_reason={stop_reason})")
+            final_report = {
+                "error": "No se pudo generar el reporte estructurado",
+                "error_detail": {
+                    "type":        "truncated" if stop_reason == "max_tokens" else "invalid_json",
+                    "stop_reason": stop_reason,
+                    "position":    e.pos,
+                    "max_tokens":  REPORT_MAX_TOKENS,
+                },
+            }
 
     return {
         "messages":     [final_message],
         "final_report": final_report
     }
-
 
 # ----------------------------------------------------------------
 # ROUTER — DECIDE QUÉ NODO SIGUE DESPUÉS DEL CLASIFICADOR
@@ -356,9 +381,10 @@ def run_agent_terminal():
         try:
             result = agent.invoke({
                 "messages":           conversation,
-                "normative_response": "",
-                "fuvia_response":     "",
-                "final_report":       {}
+                "normative_response": [],       # CAMBIO: antes ""
+                "fuvia_response":     [],       # CAMBIO: antes ""
+                "final_report":       {},
+                "tool_runs":          [],
             })
 
             # Actualizar historial con los mensajes del agente

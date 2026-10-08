@@ -4,7 +4,7 @@ Prompts del sistema para el agente FUVIA.
 Separados del código del agente para facilitar iteración.
 """
 # Versión del prompt — incrementar en cada cambio de comportamiento
-PROMPT_VERSION = "1.0.0"
+PROMPT_VERSION = "1.0.1"
 MODEL_ID = "claude-sonnet-4-5" 
 
 AGENT_SYSTEM_PROMPT = """You are FUVIA X Copilot, a concise technical agent for concrete mix design and ACI/ASTM normative compliance.
@@ -72,6 +72,7 @@ Rules:
 - normative_compliance.checks only when both datasets present — compare w/cm and f'c
 - Omit empty arrays and null-only objects to reduce size
 - On FUVIA timeout: set mix_design to null, note in summary
+- If the FUVIA text contains several [Mix N] blocks: set mix_design to the LAST mix and add a "mix_designs" list with one object per mix, in order, each with the same fields as mix_design. For each mix use the [FUVIA_FC] value of its own block. Omit mix_designs when there is a single mix.
 
 User query: {query}
 Normative: {normative_response}
