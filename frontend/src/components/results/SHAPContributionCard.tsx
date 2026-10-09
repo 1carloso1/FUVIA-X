@@ -10,12 +10,13 @@ const COLOR_NEGATIVE = '#b91c1c';  // red-700
 
 // ── Renderizador de etiqueta inline ──────────────────────────────────────────
 const renderLabel = (props: {
-  x?: number | string; y?: number | string; width?: number | string; height?: number | string; value?: number | string;
+  x?: unknown; y?: unknown; width?: unknown; height?: unknown; value?: unknown;
 }) => {
-  const { x = 0, y = 0, width = 0, height = 0, value = 0 } = props;
-  // Convertir a número para las operaciones matemáticas
-  const nx = Number(x); const ny = Number(y);
-  const nw = Number(width); const nh = Number(height); const nv = Number(value);
+  const nx = Number(props.x ?? 0);
+  const ny = Number(props.y ?? 0);
+  const nw = Number(props.width ?? 0);
+  const nh = Number(props.height ?? 0);
+  const nv = Number(props.value ?? 0);
   const sign   = nv >= 0 ? '+' : '';
   const color  = nv >= 0 ? COLOR_POSITIVE : COLOR_NEGATIVE;
   const xPos   = nv >= 0 ? nx + nw + 5 : nx + nw - 5;

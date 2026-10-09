@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import MixSelector from '../results/MixSelector';
+import { useActiveMix } from '../../hooks/useActiveMix';
+import { buildPieData } from '../../utils/pieData';
 import PredictionResultDark from '../results/PredictionResultDark';
 import MixCompositionCardDark from '../results/MixPieChartDark';
 import AbramsCurveCardDark from '../results/AbramsLineChartDark';
@@ -27,20 +30,23 @@ export default function MainLayout() {
 
   const [activeTab, setActiveTab] = useState<Tab>('formulario');
 
-  // Hook de predicción FUVIA
   const {
     form, resultado, error, loading, isLocked, camposError,
-    resultsRef, pieData, isModalOpen, realStrength, printRef, shapRef, 
+    resultsRef, isModalOpen, realStrength, printRef, shapRef,
+    submittedInputs,
     handleChange, handleSubmit, handleReset,
     openModal, closeModal, handleExperimentalChange, confirmPdfGeneration,
   } = useConcretePrediction();
 
-  // Hook del agente — recibe resultado y form para el trigger automático
+  const { mixes, active: shown, selectMix, addCopilotMixes, notice, dismissNotice } =
+    useActiveMix(submittedInputs, resultado);
+  const shownPie = useMemo(() => (shown ? buildPieData(shown.inputs) : []), [shown]);
+
   const {
     messages, input, setInput, isLoading: agentLoading,
     lastReport, bottomRef, sendUserMessage, stopGeneration,
     confirmAnalysis, declineAnalysis, handleKeyDown,
-  } = useAgentChat(resultado, form);
+  } = useAgentChat(resultado, form, shown, addCopilotMixes);
 
   // Cambiar automáticamente a tab de resultados cuando llega la predicción
   useEffect(() => {
@@ -80,21 +86,31 @@ export default function MainLayout() {
             </button>
             <button
               onClick={() => setActiveTab('resultados')}
-              disabled={!resultado}
+              disabled={!shown}
               className={`flex-1 py-2 px-3 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors ${
-                activeTab === 'resultados' && resultado
+                activeTab === 'resultados' && shown
                   ? 'bg-slate-800 text-slate-100 border border-slate-600'
-                  : !resultado
+                  : !shown
                   ? 'text-slate-700 cursor-not-allowed'
                   : 'text-slate-500 hover:text-slate-300'
               }`}
             >
               Resultados y Gráficas
-              {resultado && (
+              {shown && (
                 <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
               )}
             </button>
           </div>
+
+          {notice && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-950 border-b border-blue-900 text-[11px] text-blue-300 flex-shrink-0">
+              <span className="flex-1">{notice}</span>
+              {activeTab === 'formulario' && (
+                <button onClick={() => setActiveTab('resultados')} className="underline hover:text-blue-100">Ver</button>
+              )}
+              <button onClick={dismissNotice} aria-label="Cerrar aviso" className="hover:text-blue-100">✕</button>
+            </div>
+          )}          
 
           {/* Contenido del carrusel */}
           <div className="flex-1 overflow-y-auto">
@@ -171,22 +187,19 @@ export default function MainLayout() {
             )}
 
             {/* TAB: RESULTADOS + GRÁFICAS */}
-            {activeTab === 'resultados' && resultado && (
+            {activeTab === 'resultados' && shown && (
               <div ref={resultsRef} className="p-4 space-y-4">
-                {/* Métricas */}
-                <PredictionResultDark resultado={resultado} />
-                {/* Pie chart + tabla */}
-                <MixCompositionCardDark data={pieData} age={Number(form.age)} />
-                {/* Curva de Abrams */}
+                <MixSelector mixes={mixes} activeId={shown.id} onSelect={selectMix} />
+                <PredictionResultDark resultado={shown.result} />
+                <MixCompositionCardDark data={shownPie} age={Number(shown.inputs.age)} />
                 <AbramsCurveCardDark
-                  ratio={resultado.relacion_agua_cemento}
-                  strength={resultado.resistencia_estimada}
+                  ratio={shown.result.relacion_agua_cemento}
+                  strength={shown.result.resistencia_estimada}
                 />
-                {/* Contribuciones SHAP — XAI */}
-                {resultado.shap_contributions?.length > 0 && (
+                {shown.result.shap_contributions?.length > 0 && (
                   <SHAPContributionCardDark
-                    shap_base_value={resultado.shap_base_value}
-                    shap_contributions={resultado.shap_contributions}
+                    shap_base_value={shown.result.shap_base_value}
+                    shap_contributions={shown.result.shap_contributions}
                   />
                 )}
                 {/* Botones de acción */}
@@ -237,8 +250,8 @@ export default function MainLayout() {
         onClose={closeModal}
         value={realStrength}
         onChange={handleExperimentalChange}
-        predictedValue={resultado?.resistencia_estimada || 0}
-        predictionClass={resultado?.clase_resistencia || ''}
+        predictedValue={shown?.result.resistencia_estimada || 0}
+        predictionClass={shown?.result.clase_resistencia || ''}
         onConfirm={async () => {
           try {
             if (!printRef.current) return;
@@ -249,7 +262,8 @@ export default function MainLayout() {
               const shapCanvas = await html2canvas(shapRef.current, { scale: 2, windowWidth: 1200, width: 800 });
               shapBase64 = shapCanvas.toDataURL('image/png');
             }
-            await confirmPdfGeneration(canvas.toDataURL('image/png'), undefined, shapBase64);
+            await confirmPdfGeneration(canvas.toDataURL('image/png'), undefined, shapBase64, shown ?? undefined);   // onConfirm
+            await confirmPdfGeneration(canvas.toDataURL('image/png'), '0', shapBase64, shown ?? undefined);          // onSkip
           } catch (err) { console.error('Error capturando gráficas:', err); }
         }}
         onSkip={async () => {
@@ -270,19 +284,17 @@ export default function MainLayout() {
       />
 
       {/* Contenedor oculto para captura PDF */}
-      {resultado && (
+      {shown && (
         <>
-          {/* Ref 1 — gráficas principales (pie + Abrams) */}
           <div ref={printRef} className="absolute -left-[9999px] w-[800px] bg-white">
-            <MixCompositionCard data={pieData} age={Number(form.age)} isPdf={true} />
-            <AbramsCurveCard ratio={resultado.relacion_agua_cemento} strength={resultado.resistencia_estimada} />
+            <MixCompositionCard data={shownPie} age={Number(shown.inputs.age)} isPdf={true} />
+            <AbramsCurveCard ratio={shown.result.relacion_agua_cemento} strength={shown.result.resistencia_estimada} />
           </div>
-          {/* Ref 2 — gráfica SHAP en página separada */}
-          {resultado.shap_contributions?.length > 0 && (
+          {shown.result.shap_contributions?.length > 0 && (
             <div ref={shapRef} className="absolute -left-[9999px] w-[800px] bg-white p-8">
               <SHAPContributionCard
-                shap_base_value={resultado.shap_base_value}
-                shap_contributions={resultado.shap_contributions}
+                shap_base_value={shown.result.shap_base_value}
+                shap_contributions={shown.result.shap_contributions}
               />
             </div>
           )}

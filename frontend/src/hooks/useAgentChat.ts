@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { sendMessage } from '../services/agentService';
-import type { ChatMessage, AgentReport } from '../services/agentService';
+import type { ChatMessage, AgentReport, AgentMix, ChatResponse } from '../services/agentService';
+import { toActiveMixPayload } from './useActiveMix';
+import type { ActiveMix } from './useActiveMix';
 import type { PredictionResponse, ConcreteInputData } from '../types/concreteTypes';
 
 // ----------------------------------------------------------------
@@ -23,7 +25,9 @@ export interface ChatEntry {
 
 export function useAgentChat(
   resultado: PredictionResponse | null,
-  form:      ConcreteInputData | null
+  form:      ConcreteInputData | null,
+  activeMix: ActiveMix | null = null,                    
+  onMixes?:  (mixes: AgentMix[]) => void                 
 ) {
   const [messages,   setMessages]   = useState<ChatEntry[]>([]);
   const [input,      setInput]      = useState('');
@@ -32,6 +36,10 @@ export function useAgentChat(
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef  = useRef<AbortController | null>(null);
+
+  const applyMixes = (r: ChatResponse) => {
+    if (r.mixes?.length && onMixes) onMixes(r.mixes);
+  };
 
   // ----------------------------------------------------------------
   // STOP
@@ -88,6 +96,9 @@ export function useAgentChat(
     pendingAnalysisRef.current = (
       `Se acaba de calcular una mezcla con los siguientes datos:\n` +
       `- Cemento: ${Number(form.cement)} kg/m³\n` +
+      `- Escoria: ${Number(form.slag)} kg/m³\n` +
+      `- Ceniza volante: ${Number(form.flyash)} kg/m³\n` +
+      `- Superplastificante: ${Number(form.superplasticizer)} kg/m³\n` +
       `- Agua: ${Number(form.water)} kg/m³\n` +
       `- Agregado grueso: ${Number(form.coarseaggregate)} kg/m³\n` +
       `- Agregado fino: ${Number(form.fineaggregate)} kg/m³\n` +
@@ -138,9 +149,10 @@ export function useAgentChat(
     const controller = new AbortController();
     abortRef.current = controller;
 
-    sendMessage(pendingMessage, [], controller.signal)
+    sendMessage(pendingMessage, [], controller.signal, toActiveMixPayload(activeMix))  
       .then(response => {
         if (controller.signal.aborted) return;
+        applyMixes(response);                                                          
         setMessages(prev => [
           ...prev.filter(m => !m.loading),
           {
@@ -215,8 +227,9 @@ export function useAgentChat(
     abortRef.current = controller;
 
     try {
-      const response = await sendMessage(trimmed, history, controller.signal);
+      const response = await sendMessage(trimmed, history, controller.signal, toActiveMixPayload(activeMix));   // CAMBIO
       if (controller.signal.aborted) return;
+      applyMixes(response);  
       setMessages(prev => [
         ...prev.filter(m => !m.loading),
         {

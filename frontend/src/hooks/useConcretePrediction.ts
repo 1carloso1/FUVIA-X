@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { predecirConcreto, generarReporteAPI } from '../services/predictionService';
 import type { ConcreteInputData, PredictionResponse } from '../types/concreteTypes';
 import { DEFAULT_STATE, INITIAL_STATE } from '../constants/concreteConstants';
+import { buildPieData } from '../utils/pieData';
 
 
 
@@ -17,6 +18,7 @@ export function useConcretePrediction() {
   const [isLocked, setIsLocked] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [realStrength, setRealStrength] = useState(""); // Valor experimental
+  const [submittedInputs, setSubmittedInputs] = useState<ConcreteInputData | null>(null);
 
   const resultsRef = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
@@ -106,6 +108,7 @@ export function useConcretePrediction() {
     try {
       const data = await predecirConcreto(payload);
       setResultado(data);
+      setSubmittedInputs(payload);
       setIsLocked(true);
     } catch (error) {
       console.error("Falla interceptada:", error);
@@ -172,6 +175,7 @@ export function useConcretePrediction() {
     // B. Esperamos un poco a que suba y luego limpiamos (opcional, o hacerlo directo)
     setTimeout(() => {
       setResultado(null);       // Borrar gráficas
+      setSubmittedInputs(null);
       setForm(INITIAL_STATE);   // Borrar datos del formulario
       setIsLocked(false);       // Desbloquear inputs
       setError(null);           // Borrar errores si los hubiera
@@ -190,23 +194,30 @@ export function useConcretePrediction() {
      }
   };
 
-  const confirmPdfGeneration = async (graficasBase64: string, overrideStrength?: string, shapGraficasBase64?: string ) => {
+    const confirmPdfGeneration = async (
+    graficasBase64: string,
+    overrideStrength?: string,
+    shapGraficasBase64?: string,
+    mix?: { inputs: ConcreteInputData; result: PredictionResponse }   // NUEVO: mezcla mostrada
+  ) => {
     try {
-      if (!resultado) return; 
-      
+      const inputs = mix?.inputs ?? form;
+      const result = mix?.result ?? resultado;
+      if (!result) return;
+
       const fuerzaFinal = overrideStrength !== undefined ? overrideStrength : realStrength;
-      const pdfBlob = await generarReporteAPI(form, resultado, fuerzaFinal, graficasBase64, shapGraficasBase64);
-      
+      const pdfBlob = await generarReporteAPI(inputs, result, fuerzaFinal, graficasBase64, shapGraficasBase64);
+
       const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Reporte_Validacion_${form.age}dias.pdf`);
+      link.setAttribute('download', `Reporte_Validacion_${inputs.age}dias.pdf`);
       document.body.appendChild(link);
       link.click();
-      
+
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       closeModal();
     } catch (error) {
       console.error("Error al generar PDF:", error);
@@ -215,21 +226,7 @@ export function useConcretePrediction() {
   };
 
   // 4. PREPARACIÓN DE DATOS (Optimizada con useMemo)
-  const pieData = useMemo(() => {
-    // Nota: Recharts necesita códigos HEX directos en el objeto 'fill', 
-    // no lee clases de Tailwind automáticamente.
-    const datosBrutos = [
-      { name: 'Cement', value: Number(form.cement), fill: '#8f8f91' }, // Slate-800
-      { name: 'Slag', value: Number(form.slag), fill: '#64748b' },   // Slate-500
-      { name: 'Fly Ash', value: Number(form.flyash), fill: '#94a3b8' },  // Slate-400
-      { name: 'Water', value: Number(form.water), fill: '#3b82f6' },     // Blue-500
-      { name: 'Superplasticizer', value: Number(form.superplasticizer), fill: '#8b5cf6' }, // Violet-500
-      { name: 'Coarse Aggregate', value: Number(form.coarseaggregate), fill: '#451a03' }, // Amber-900
-      { name: 'Fine Aggregate', value: Number(form.fineaggregate), fill: '#d97706' }    // Amber-600
-    ];
-
-    return datosBrutos.filter(item => item.value > 0);
-  }, [form]);
+const pieData = useMemo(() => buildPieData(form), [form]);
 
   return {
     form,
@@ -251,5 +248,6 @@ export function useConcretePrediction() {
     handleExperimentalChange,
     shapRef,
     confirmPdfGeneration,
+    submittedInputs,
   };
 }

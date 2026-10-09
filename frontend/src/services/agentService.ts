@@ -1,11 +1,25 @@
 // Mismo patrón que predictionService.ts
-
+import type { ConcreteInputData, PredictionResponse } from '../types/concreteTypes';
 const AGENT_URL = import.meta.env.VITE_AGENT_URL || "http://localhost:8001";
 const baseUrl = AGENT_URL.replace(/\/+$/, "").replace(/\/api\/chat$/, "");
 
 // ----------------------------------------------------------------
 // TIPOS
 // ----------------------------------------------------------------
+
+export interface ActiveMixPayload {
+  id:     string;
+  origin: 'form' | 'copilot';
+  inputs: ConcreteInputData;
+  result: {
+    resistencia_estimada:  number;
+    relacion_agua_cemento: number;
+    relacion_grava_arena:  number;
+    clase_resistencia:     string;
+  };
+}
+
+export interface AgentMix { inputs: ConcreteInputData; result: PredictionResponse; }
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -63,6 +77,7 @@ export interface ChatResponse {
   response:     string;
   report:       AgentReport | null;
   tools_called: string[];
+  mixes?: AgentMix[] | null;
 }
 
 // ----------------------------------------------------------------
@@ -72,13 +87,14 @@ export interface ChatResponse {
 export const sendMessage = async (
   message: string,
   history: ChatMessage[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  activeMix?: ActiveMixPayload, 
 ): Promise<ChatResponse> => {
 
   const response = await fetch(`${baseUrl}/api/chat`, {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ message, history }),
+    body:    JSON.stringify({ message, history, active_mix: activeMix ?? null }),
     signal,
   });
 
