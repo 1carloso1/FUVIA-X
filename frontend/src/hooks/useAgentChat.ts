@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { sendMessage } from '../services/agentService';
-import type { ChatMessage, AgentReport, AgentMix, ChatResponse } from '../services/agentService';
+import { sendMessage, postFeedback } from '../services/agentService';
+import type { ChatMessage, AgentReport, AgentMix, ChatResponse, FeedbackFlag, LoggingOptions } from '../services/agentService';
+import { useLogConsent } from './useLogConsent';
+import type { ConsentState } from './useLogConsent';
 import { toActiveMixPayload } from './useActiveMix';
 import type { ActiveMix } from './useActiveMix';
 import type { PredictionResponse, ConcreteInputData } from '../types/concreteTypes';
@@ -17,6 +19,24 @@ export interface ChatEntry {
   loading?:  boolean;
   isPrompt?: boolean;
   chosenOption?: 'confirmed' | 'declined';
+  turnId?: string;
+  feedback?: FeedbackFlag;
+}
+
+export interface PrivacyControls {
+  consent:    ConsentState;
+  grant:      () => void;
+  deny:       () => void;
+  sessionId:  string;
+  onFeedback: (turnId: string, flag: FeedbackFlag) => void;
+}
+
+function newSessionId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
 }
 
 // ----------------------------------------------------------------
@@ -33,6 +53,24 @@ export function useAgentChat(
   const [input,      setInput]      = useState('');
   const [isLoading,  setIsLoading]  = useState(false);
   const [lastReport, setLastReport] = useState<AgentReport | null>(null);
+
+  const { consent, grant, deny } = useLogConsent();
+  const [sessionId] = useState(newSessionId);
+  const turnRef = useRef(0);
+
+  const loggingOptions = (): LoggingOptions => {
+    turnRef.current += 1;
+    return { sessionId, logConsent: consent === 'granted', turn: turnRef.current };
+  };
+
+  const onFeedback = (turnId: string, flag: FeedbackFlag) => {
+    setMessages(prev => prev.map(m => (m.turnId === turnId ? { ...m, feedback: flag } : m)));
+    postFeedback(sessionId, turnId, flag).then(ok => {
+      if (!ok) {
+        setMessages(prev => prev.map(m => (m.turnId === turnId ? { ...m, feedback: undefined } : m)));
+      }
+    });
+  };
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const abortRef  = useRef<AbortController | null>(null);
@@ -149,7 +187,7 @@ export function useAgentChat(
     const controller = new AbortController();
     abortRef.current = controller;
 
-    sendMessage(pendingMessage, [], controller.signal, toActiveMixPayload(activeMix))  
+    sendMessage(pendingMessage, [], controller.signal, toActiveMixPayload(activeMix), loggingOptions())
       .then(response => {
         if (controller.signal.aborted) return;
         applyMixes(response);                                                          
@@ -160,6 +198,7 @@ export function useAgentChat(
             content: response.response,
             report:  response.report,
             tools:   response.tools_called,
+            turnId:  response.turn_id ?? undefined,
           }
         ]);
         if (response.report) setLastReport(response.report);
@@ -227,7 +266,7 @@ export function useAgentChat(
     abortRef.current = controller;
 
     try {
-      const response = await sendMessage(trimmed, history, controller.signal, toActiveMixPayload(activeMix));   // CAMBIO
+      const response = await sendMessage(trimmed, history, controller.signal, toActiveMixPayload(activeMix), loggingOptions());
       if (controller.signal.aborted) return;
       applyMixes(response);  
       setMessages(prev => [
@@ -237,6 +276,7 @@ export function useAgentChat(
           content: response.response,
           report:  response.report,
           tools:   response.tools_called,
+          turnId:  response.turn_id ?? undefined,
         }
       ]);
       if (response.report) setLastReport(response.report);
@@ -271,5 +311,6 @@ export function useAgentChat(
     confirmAnalysis,
     declineAnalysis,
     handleKeyDown,
+    privacy: { consent, grant, deny, sessionId, onFeedback } as PrivacyControls, 
   };
 }

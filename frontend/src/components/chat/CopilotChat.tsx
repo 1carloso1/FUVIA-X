@@ -1,6 +1,6 @@
 import ReactMarkdown from 'react-markdown';
-import type { ChatEntry } from '../../hooks/useAgentChat';
-import type { AgentReport } from '../../services/agentService';
+import type { ChatEntry, PrivacyControls } from '../../hooks/useAgentChat';
+import type { AgentReport, FeedbackFlag } from '../../services/agentService';
 
 // ----------------------------------------------------------------
 // TIPOS
@@ -18,6 +18,7 @@ interface CopilotChatProps {
   confirmAnalysis:  () => void;
   declineAnalysis:  () => void;
   handleKeyDown:    (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  privacy: PrivacyControls;
 }
 
 // ----------------------------------------------------------------
@@ -66,14 +67,84 @@ function ComplianceCheck({ checks }: { checks: AgentReport['normative_compliance
   );
 }
 
+function ConsentBanner({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
+  return (
+    <div className="px-3 py-3 bg-slate-950 border-b border-slate-700 flex-shrink-0 space-y-2">
+      <p className="text-[11px] font-semibold text-slate-200">
+        ¿Podemos guardar esta conversación de forma anónima?
+      </p>
+      <p className="text-[10px] text-slate-400 leading-relaxed">
+        <strong className="text-slate-300">Se guarda:</strong> tus mensajes, las respuestas del copiloto,
+        las mezclas que consultas, las fuentes normativas recuperadas, la hora y la versión del sistema,
+        ligados a un identificador aleatorio de esta sesión.{' '}
+        <strong className="text-slate-300">No se guarda en el registro:</strong> tu nombre, correo ni
+        dirección IP. Evita escribir datos personales en el chat.{' '}
+        <strong className="text-slate-300">Para qué:</strong> evaluar y mejorar el sistema con fines de
+        investigación. Puedes cambiar tu decisión en cualquier momento desde el encabezado; lo ya
+        guardado no se borra solo.
+      </p>
+      <div className="flex gap-2">
+        <button
+          onClick={onAccept}
+          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold rounded-lg transition-colors"
+        >
+          Aceptar
+        </button>
+        <button
+          onClick={onDecline}
+          className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-[11px] font-semibold rounded-lg transition-colors"
+        >
+          No, gracias
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FeedbackButtons({ turnId, value, onFeedback }: {
+  turnId:     string;
+  value?:     FeedbackFlag;
+  onFeedback: (turnId: string, flag: FeedbackFlag) => void;
+}) {
+  const cls = (flag: FeedbackFlag, active: string) =>
+    `px-2 py-0.5 text-[10px] rounded border transition-colors ${
+      value === flag
+        ? active
+        : value
+        ? 'bg-slate-900 text-slate-700 border-slate-800 cursor-default'
+        : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-slate-200'
+    }`;
+  return (
+    <div className="flex items-center gap-1.5 mt-1.5">
+      <span className="text-[10px] text-slate-600">¿Te sirvió?</span>
+      <button
+        disabled={!!value}
+        onClick={() => onFeedback(turnId, 'useful')}
+        className={cls('useful', 'bg-emerald-950 text-emerald-300 border-emerald-800')}
+      >
+        Útil
+      </button>
+      <button
+        disabled={!!value}
+        onClick={() => onFeedback(turnId, 'doubtful')}
+        className={cls('doubtful', 'bg-amber-950 text-amber-300 border-amber-800')}
+      >
+        Dudosa
+      </button>
+    </div>
+  );
+}
+
 function AssistantMessage({
   entry,
   onConfirm,
   onDecline,
+  onFeedback,
 }: {
-  entry:     ChatEntry;
-  onConfirm: () => void;
-  onDecline: () => void;
+  entry:      ChatEntry;
+  onConfirm:  () => void;
+  onDecline:  () => void;
+  onFeedback: (turnId: string, flag: FeedbackFlag) => void;
 }) {
   if (entry.loading) {
     return (
@@ -148,6 +219,10 @@ function AssistantMessage({
         {entry.report?.normative_compliance?.checks?.length ? (
           <ComplianceCheck checks={entry.report.normative_compliance.checks} />
         ) : null}
+        {/* Retroalimentación: solo en turnos que quedaron registrados */}
+        {entry.turnId && (
+          <FeedbackButtons turnId={entry.turnId} value={entry.feedback} onFeedback={onFeedback} />
+        )}
       </div>
     </div>
   );
@@ -178,6 +253,7 @@ export default function CopilotChat({
   confirmAnalysis,
   declineAnalysis,
   handleKeyDown,
+  privacy,
 }: CopilotChatProps) {
   return (
     <div className="flex flex-col h-full bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
@@ -188,17 +264,38 @@ export default function CopilotChat({
         <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
           Copiloto FUVIA X
         </span>
-        <span className="ml-auto text-[10px] text-slate-500 bg-slate-800 border border-slate-700 rounded px-2 py-0.5">
-          ACI 318 · ACI 211 · ASTM
-        </span>
+        <div className="ml-auto flex items-center gap-2">
+          {privacy.consent !== 'unset' && (
+            <button
+              onClick={privacy.consent === 'granted' ? privacy.deny : privacy.grant}
+              title={
+                privacy.consent === 'granted'
+                  ? `Registro anónimo activo (ID de sesión: ${privacy.sessionId}). Clic para desactivar.`
+                  : 'Registro desactivado. Clic para activar.'
+              }
+              className="inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-300 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 transition-colors"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${privacy.consent === 'granted' ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+              {privacy.consent === 'granted' ? 'Registro activo' : 'Registro desactivado'}
+            </button>
+          )}
+          <span className="text-[10px] text-slate-500 bg-slate-800 border border-slate-700 rounded px-2 py-0.5">
+            ACI 318 · ACI 211 · ASTM
+          </span>
+        </div>
       </div>
+
+      {privacy.consent === 'unset' && (
+        <ConsentBanner onAccept={privacy.grant} onDecline={privacy.deny} />
+      )}
 
       {/* MENSAJES */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 min-h-0">
         {messages.map((msg, i) =>
           msg.role === 'assistant'
-            ? <AssistantMessage key={i} entry={msg} onConfirm={confirmAnalysis} onDecline={declineAnalysis} />
+            ? <AssistantMessage key={i} entry={msg} onConfirm={confirmAnalysis} onDecline={declineAnalysis} onFeedback={privacy.onFeedback} />
             : <UserMessage      key={i} content={msg.content} />
+
         )}
         <div ref={bottomRef} />
       </div>

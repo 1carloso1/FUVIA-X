@@ -45,7 +45,7 @@ export default function MainLayout() {
   const {
     messages, input, setInput, isLoading: agentLoading,
     lastReport, bottomRef, sendUserMessage, stopGeneration,
-    confirmAnalysis, declineAnalysis, handleKeyDown,
+    confirmAnalysis, declineAnalysis, handleKeyDown, privacy
   } = useAgentChat(resultado, form, shown, addCopilotMixes);
 
   // Cambiar automáticamente a tab de resultados cuando llega la predicción
@@ -240,6 +240,7 @@ export default function MainLayout() {
           confirmAnalysis={confirmAnalysis}
           declineAnalysis={declineAnalysis}
           handleKeyDown={handleKeyDown}
+          privacy={privacy}
         />
 
       </div>

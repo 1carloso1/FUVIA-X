@@ -78,6 +78,15 @@ export interface ChatResponse {
   report:       AgentReport | null;
   tools_called: string[];
   mixes?: AgentMix[] | null;
+  turn_id?: string | null;
+}
+
+export type FeedbackFlag = 'useful' | 'doubtful';
+
+export interface LoggingOptions {
+  sessionId:  string;
+  logConsent: boolean;
+  turn:       number;
 }
 
 // ----------------------------------------------------------------
@@ -88,13 +97,21 @@ export const sendMessage = async (
   message: string,
   history: ChatMessage[],
   signal?: AbortSignal,
-  activeMix?: ActiveMixPayload, 
+  activeMix?: ActiveMixPayload,
+  logging?: LoggingOptions,
 ): Promise<ChatResponse> => {
 
   const response = await fetch(`${baseUrl}/api/chat`, {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ message, history, active_mix: activeMix ?? null }),
+    body:    JSON.stringify({
+      message,
+      history,
+      active_mix:  activeMix ?? null,
+      session_id:  logging?.sessionId ?? null,
+      log_consent: logging?.logConsent ?? false,
+      turn:        logging?.turn ?? null,
+    }),
     signal,
   });
 
@@ -105,4 +122,23 @@ export const sendMessage = async (
   }
 
   return await response.json();
+};
+
+export const postFeedback = async (
+  sessionId: string,
+  turnId: string,
+  flag: FeedbackFlag,
+): Promise<boolean> => {
+  try {
+    const response = await fetch(`${baseUrl}/api/feedback`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ session_id: sessionId, turn_id: turnId, flag }),
+    });
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data.stored === true;
+  } catch {
+    return false;
+  }
 };
