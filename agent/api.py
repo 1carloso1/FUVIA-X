@@ -21,11 +21,13 @@ import json
 import logging
 import time
 import math
+import uuid
 
 from functools import lru_cache
-from turn_log import build_turn_record, write_turn
+from turn_log import build_turn_record, write_turn, write_feedback
 from typing import Optional
 from contextlib import asynccontextmanager
+from typing import Optional, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -129,13 +131,20 @@ class ChatRequest(BaseModel):
     history:  list[ChatMessage] = []
     session_id:  Optional[str] = None   # NUEVO: UUID anónimo generado en el frontend
     log_consent: bool = False           # NUEVO: sin consentimiento no se escribe nada
-    active_mix:  Optional[ActiveMix] = None  
+    active_mix:  Optional[ActiveMix] = None 
+    turn: Optional[int] = None  
 
 class ChatResponse(BaseModel):
     response:     str
     report:       Optional[dict] = None
     tools_called: list[str] = []
     mixes:       Optional[list[dict]] = None
+    turn_id: Optional[str] = None
+
+class FeedbackRequest(BaseModel):
+    session_id: Optional[str] = None
+    turn_id:    str
+    flag:       Literal["useful", "doubtful"]
 
 
 # ----------------------------------------------------------------
@@ -252,6 +261,21 @@ def health():
     """Verifica que el servidor está activo."""
     return {"status": "ok", "agent": "ready" if agent_instance else "initializing"}
 
+@app.post("/api/feedback")
+def feedback(req: FeedbackRequest):
+    if not re.fullmatch(r"[0-9a-f]{32}", req.turn_id):
+        raise HTTPException(status_code=422, detail="turn_id inválido")
+    try:
+        stored = write_feedback(
+            session_id=(req.session_id or "")[:64] or None,
+            turn_id=req.turn_id,
+            flag=req.flag,
+        )
+    except Exception as e:
+        logger.warning(f"No se pudo escribir la retroalimentación: {e}")
+        stored = False
+    return {"stored": stored}
+
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
@@ -301,6 +325,8 @@ async def chat(request: ChatRequest):
         if final_report and "error" in final_report:
             final_report = None
 
+        turn_id = None
+
         # Registro con consentimiento; un fallo aquí nunca rompe la respuesta
         if request.log_consent:
             try:
@@ -315,9 +341,12 @@ async def chat(request: ChatRequest):
                 except Exception as cc_err:
                     citation_check = {"error": f"{type(cc_err).__name__}: {cc_err}"}
 
-                write_turn(build_turn_record(
+                candidate_id = uuid.uuid4().hex
+                wrote = write_turn(build_turn_record(
                     session_id=request.session_id,
-                    turn=sum(1 for m in request.history if m.role == "user") + 1,
+                    turn=(max(1, min(request.turn, 10000)) if request.turn is not None
+                          else sum(1 for m in request.history if m.role == "user") + 1),
+                    turn_id=candidate_id,
                     user_message=request.message,
                     history_len=len(history_messages),
                     tool_runs=result.get("tool_runs", []),
@@ -330,6 +359,8 @@ async def chat(request: ChatRequest):
                     versions=_get_versions(),
                     citation_check=citation_check,
                 ))
+                if wrote:
+                    turn_id = candidate_id
             except Exception as log_err:
                 logger.warning(f"No se pudo escribir el registro del turno: {log_err}")
 
@@ -339,7 +370,8 @@ async def chat(request: ChatRequest):
             response=response_text,
             report=final_report if final_report else None,
             tools_called=tools_called,
-            mixes=mixes or None,                                          
+            mixes=mixes or None,
+            turn_id=turn_id,                                          
         )
 
     except Exception as e:

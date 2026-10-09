@@ -25,7 +25,7 @@ def _log_dir() -> Path:
 def build_turn_record(*, session_id, turn, user_message, history_len, tool_runs,
                       final_response, report, report_parse_error,
                       latency_ms_total, versions, citation_check=None,
-                      report_error=None, active_mix=None) -> dict: 
+                      report_error=None, active_mix=None, turn_id=None) -> dict: 
     rag = next((r for r in tool_runs if r.get("tool") == "query_normative_standards"), None)
 
     tools = []
@@ -50,6 +50,7 @@ def build_turn_record(*, session_id, turn, user_message, history_len, tool_runs,
         "report_parse_error": report_parse_error,
         "report_error":       report_error,
         "active_mix":         active_mix,
+        "turn_id":            turn_id,
         "citation_check":     citation_check, 
         "latency_ms_total":   latency_ms_total,
         "labels":             {"user_flag": None, "human_verdict": None},
@@ -64,6 +65,27 @@ def write_turn(record: dict) -> bool:
     d.mkdir(parents=True, exist_ok=True)
     path = d / f"turns-{datetime.now(timezone.utc):%Y-%m-%d}.jsonl"
     line = json.dumps(record, ensure_ascii=False, default=str)
+    with _LOCK:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    return True
+
+def write_feedback(*, session_id, turn_id: str, flag: str) -> bool:
+    """Retroalimentación del usuario (append-only, archivo aparte). Se une a turns-*.jsonl por turn_id."""
+    if os.getenv("FUVIA_LOG_ENABLED", "0") != "1":
+        return False
+    d = _log_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    path = d / f"feedback-{datetime.now(timezone.utc):%Y-%m-%d}.jsonl"
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "type":           "feedback",
+        "ts":             datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        "session_id":     session_id,
+        "turn_id":        turn_id,
+        "flag":           flag,
+    }
+    line = json.dumps(record, ensure_ascii=False)
     with _LOCK:
         with open(path, "a", encoding="utf-8") as f:
             f.write(line + "\n")
