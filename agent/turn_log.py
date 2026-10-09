@@ -22,11 +22,10 @@ _LOCK = threading.Lock()
 def _log_dir() -> Path:
     return Path(os.getenv("FUVIA_LOG_DIR", str(Path(__file__).parent / "logs")))
 
-
 def build_turn_record(*, session_id, turn, user_message, history_len, tool_runs,
                       final_response, report, report_parse_error,
                       latency_ms_total, versions, citation_check=None,
-                      report_error=None) -> dict: 
+                      report_error=None, active_mix=None) -> dict: 
     rag = next((r for r in tool_runs if r.get("tool") == "query_normative_standards"), None)
 
     tools = []
@@ -50,6 +49,7 @@ def build_turn_record(*, session_id, turn, user_message, history_len, tool_runs,
         "report":             report,
         "report_parse_error": report_parse_error,
         "report_error":       report_error,
+        "active_mix":         active_mix,
         "citation_check":     citation_check, 
         "latency_ms_total":   latency_ms_total,
         "labels":             {"user_flag": None, "human_verdict": None},

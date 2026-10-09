@@ -64,6 +64,7 @@ class AgentState(TypedDict):
     fuvia_response:     Annotated[list, operator.add]   # CAMBIO: antes str
     final_report:       dict
     tool_runs:          Annotated[list, operator.add]
+    active_mix: str
 
 
 # ----------------------------------------------------------------
@@ -123,6 +124,13 @@ def _fc_injection(tool_runs: list) -> str:
           "Do not round, recalculate, or swap values between mixes."
     )
 
+def _active_mix_block(state: AgentState) -> str:
+    """Bloque ACTIVE MIX para el system prompt (vacío si el frontend no envió active_mix)."""
+    txt = (state.get("active_mix") or "").strip()
+    if not txt:
+        return ""
+    return ("\n\nACTIVE MIX (the mix currently shown in the user's results panel; "
+            "reference for \"my mix\"):\n" + txt)
 
 # ----------------------------------------------------------------
 # NODOS DEL GRAFO
@@ -142,7 +150,7 @@ def node_classifier(state: AgentState) -> AgentState:
     llm = build_llm()
     llm_with_tools = llm.bind_tools(TOOLS)
 
-    messages = [SystemMessage(content=AGENT_SYSTEM_PROMPT)] + state["messages"]
+    messages = [SystemMessage(content=AGENT_SYSTEM_PROMPT + _active_mix_block(state))] + state["messages"]
 
     logger.info("Clasificador analizando la consulta...")
     response = llm_with_tools.invoke(messages)
@@ -235,7 +243,7 @@ def node_synthesizer(state: AgentState) -> AgentState:
         }
 
     # f'c exacto de CADA mezcla calculada en este turno (tomado de los artifacts)
-    system_with_fc = AGENT_SYSTEM_PROMPT + _fc_injection(state.get("tool_runs", []))
+    system_with_fc = AGENT_SYSTEM_PROMPT + _active_mix_block(state) + _fc_injection(state.get("tool_runs", []))
     messages       = [SystemMessage(content=system_with_fc)] + state["messages"]
     final_message  = llm.invoke(messages)
 

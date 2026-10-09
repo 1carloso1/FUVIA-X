@@ -20,6 +20,8 @@ import re
 import json
 import logging
 import time
+import math
+
 from functools import lru_cache
 from turn_log import build_turn_record, write_turn
 from typing import Optional
@@ -51,6 +53,63 @@ from agent import build_agent, AgentState
 from tools.rag_tool import initialize_rag
 from prompts import AGENT_SYSTEM_PROMPT
 
+_MIX_LABELS = [("cement", "cement"), ("slag", "slag"), ("flyash", "fly ash"),
+               ("water", "water"), ("superplasticizer", "superplasticizer"),
+               ("coarseaggregate", "coarse aggregate"), ("fineaggregate", "fine aggregate")]
+
+def _num(x):
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return None
+    return v if math.isfinite(v) else None
+
+
+def _format_active_mix(am) -> str:
+    """Texto del bloque ACTIVE MIX para el agente. Solo valores numéricos validados."""
+    if am is None:
+        return ""
+    inputs, res = am.inputs or {}, am.result or {}
+
+    comp = []
+    for key, label in _MIX_LABELS:
+        v = _num(inputs.get(key))
+        if v is not None:
+            comp.append(f"{label}={v:g} kg/m3")
+    age = _num(inputs.get("age"))
+    if age is not None:
+        comp.append(f"age={age:g} days")
+
+    pred = []
+    for key, label, unit in [("resistencia_estimada", "f'c", " MPa"),
+                             ("relacion_agua_cemento", "w/cm", ""),
+                             ("relacion_grava_arena", "gravel/sand", "")]:
+        v = _num(res.get(key))
+        if v is not None:
+            pred.append(f"{label} = {v:g}{unit}")
+    cls = res.get("clase_resistencia")
+    if isinstance(cls, str) and cls.strip():
+        pred.append("class = " + re.sub(r"[^\w\s\-]", "", cls)[:60])
+
+    if not comp and not pred:
+        return ""
+    origin = ("calculated by you (the copilot) earlier in this conversation"
+              if am.origin == "copilot" else "entered by the user in the form")
+    lines = [f"origin: {origin}"]
+    if comp:
+        lines.append("composition: " + ", ".join(comp))
+    if pred:
+        lines.append("prediction: " + "; ".join(pred))
+    return "\n".join(lines)
+
+
+def _extract_mixes(tool_runs: list) -> list:
+    """Mezclas validadas por FUVIA en este turno (el artifact solo trae 'response' si hubo éxito)."""
+    return [{"inputs": r["args"], "result": r["response"]}
+            for r in tool_runs
+            if r.get("tool") == "fuvia_predict_mix_design"
+            and isinstance(r.get("response"), dict) and isinstance(r.get("args"), dict)]
+
 # ----------------------------------------------------------------
 # SCHEMAS DE REQUEST / RESPONSE
 # ----------------------------------------------------------------
@@ -59,18 +118,24 @@ class ChatMessage(BaseModel):
     role: str        # "user" o "assistant"
     content: str
 
+class ActiveMix(BaseModel):
+    id:     Optional[str] = None
+    origin: Optional[str] = None      # "form" | "copilot"
+    inputs: dict = {}
+    result: dict = {}
 
 class ChatRequest(BaseModel):
     message:  str
     history:  list[ChatMessage] = []
     session_id:  Optional[str] = None   # NUEVO: UUID anónimo generado en el frontend
     log_consent: bool = False           # NUEVO: sin consentimiento no se escribe nada
-
+    active_mix:  Optional[ActiveMix] = None  
 
 class ChatResponse(BaseModel):
     response:     str
     report:       Optional[dict] = None
     tools_called: list[str] = []
+    mixes:       Optional[list[dict]] = None
 
 
 # ----------------------------------------------------------------
@@ -221,6 +286,7 @@ async def chat(request: ChatRequest):
             "fuvia_response":     [],       # CAMBIO: antes ""
             "final_report":       {},
             "tool_runs":          [],
+            "active_mix":         _format_active_mix(request.active_mix),
         })
 
         # Extraer respuesta final
@@ -229,7 +295,8 @@ async def chat(request: ChatRequest):
         final_report  = result.get("final_report", {})
 
         report_parse_error = bool(final_report and "error" in final_report)
-        report_error = final_report.get("error_detail") if report_parse_error else None   # NUEVO
+        report_error = final_report.get("error_detail") if report_parse_error else None
+        mixes = _extract_mixes(result.get("tool_runs", []))              
         # Limpiar report vacío
         if final_report and "error" in final_report:
             final_report = None
@@ -258,6 +325,7 @@ async def chat(request: ChatRequest):
                     report=final_report if final_report else None,
                     report_parse_error=report_parse_error,
                     report_error=report_error,
+                    active_mix=request.active_mix.model_dump() if request.active_mix else None,
                     latency_ms_total=int((time.perf_counter() - t_start) * 1000),
                     versions=_get_versions(),
                     citation_check=citation_check,
@@ -270,7 +338,8 @@ async def chat(request: ChatRequest):
         return ChatResponse(
             response=response_text,
             report=final_report if final_report else None,
-            tools_called=tools_called
+            tools_called=tools_called,
+            mixes=mixes or None,                                          
         )
 
     except Exception as e:
